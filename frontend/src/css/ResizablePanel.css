@@ -1,0 +1,35 @@
+.resizable-panel {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+}
+
+.resizer {
+    position: absolute;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    cursor: col-resize;
+    transition: background-color 0.2s;
+}
+
+.resizer:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.resizer.left {
+    right: 0;
+}
+
+.resizer.right {
+    left: 0;
+}
+
+.resizable-panel.left {
+    border-right: 1px solid #ddd;
+}
+
+.resizable-panel.right {
+    border-left: 1px solid #ddd;
+} 

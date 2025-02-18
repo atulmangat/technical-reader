@@ -1,0 +1,61 @@
+.highlights-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: white;
+}
+
+.highlights-header {
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.highlights-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.highlight-item {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.highlight-content {
+    flex: 1;
+    cursor: pointer;
+}
+
+.highlight-text {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.highlight-note {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+}
+
+.highlight-meta {
+    font-size: 0.8rem;
+    color: #999;
+    margin-top: 0.5rem;
+}
+
+.delete-highlight {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    padding: 0.25rem;
+    opacity: 0.5;
+}
+
+.delete-highlight:hover {
+    opacity: 1;
+} 
