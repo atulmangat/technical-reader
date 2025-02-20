@@ -38,6 +38,9 @@ An interactive PDF viewer with AI-powered chat, highlighting, and note-taking ca
 3. Create and activate a virtual environment:
    ```bash
    python -m venv venv
+   # On Windows
+   .\venv\Scripts\Activate
+   # On Unix-like systems (Linux and macOS)
    source venv/bin/activate 
    ```
 
@@ -45,6 +48,12 @@ An interactive PDF viewer with AI-powered chat, highlighting, and note-taking ca
    ```bash
    pip install -r requirements.txt
    ```
+
+5. Initialize Database (Only Required for First-Time Setup or Schema Changes)
+   ```bash
+   python -m app.initialize_db
+   ```
+   Note: You only need to run this when setting up the project for the first time or if you manually delete the database or change models.
 
 5. Run the Flask application:
    ```bash
