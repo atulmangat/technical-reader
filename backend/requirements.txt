@@ -6,9 +6,9 @@ python-dotenv==1.0.0
 sqlalchemy==1.4.36
 requests==2.31.0
 flask-login==0.6.2
-PyMuPDF==1.22.5
-Pillow==10.0.0
-langchain==0.1.0
-chromadb==0.4.22
-sentence-transformers==2.2.2
+PyMuPDF==1.25.3
+Pillow==11.1.0
+langchain==0.3.19
+chromadb==0.6.3
+sentence-transformers==3.4.1
 pypdf2==3.0.1 
