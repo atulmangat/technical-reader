@@ -10,104 +10,104 @@
 
 // Import Routes
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as LoginImport } from './routes/login'
-import { Route as IndexImport } from './routes/index'
-import { Route as PdfPdfIdImport } from './routes/pdf.$pdfId'
+import { Route as rootRoute } from "./routes/__root";
+import { Route as LoginImport } from "./routes/login";
+import { Route as IndexImport } from "./routes/index";
+import { Route as PdfPdfIdImport } from "./routes/pdf.$pdfId";
 
 // Create/Update Routes
 
 const LoginRoute = LoginImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
 
 const IndexRoute = IndexImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
 
 const PdfPdfIdRoute = PdfPdfIdImport.update({
-  id: '/pdf/$pdfId',
-  path: '/pdf/$pdfId',
+  id: "/pdf/$pdfId",
+  path: "/pdf/$pdfId",
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
 
 // Populate the FileRoutesByPath interface
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginImport
-      parentRoute: typeof rootRoute
-    }
-    '/pdf/$pdfId': {
-      id: '/pdf/$pdfId'
-      path: '/pdf/$pdfId'
-      fullPath: '/pdf/$pdfId'
-      preLoaderRoute: typeof PdfPdfIdImport
-      parentRoute: typeof rootRoute
-    }
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/login": {
+      id: "/login";
+      path: "/login";
+      fullPath: "/login";
+      preLoaderRoute: typeof LoginImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/pdf/$pdfId": {
+      id: "/pdf/$pdfId";
+      path: "/pdf/$pdfId";
+      fullPath: "/pdf/$pdfId";
+      preLoaderRoute: typeof PdfPdfIdImport;
+      parentRoute: typeof rootRoute;
+    };
   }
 }
 
 // Create and export the route tree
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/pdf/$pdfId': typeof PdfPdfIdRoute
+  "/": typeof IndexRoute;
+  "/login": typeof LoginRoute;
+  "/pdf/$pdfId": typeof PdfPdfIdRoute;
 }
 
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/pdf/$pdfId': typeof PdfPdfIdRoute
+  "/": typeof IndexRoute;
+  "/login": typeof LoginRoute;
+  "/pdf/$pdfId": typeof PdfPdfIdRoute;
 }
 
 export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/pdf/$pdfId': typeof PdfPdfIdRoute
+  __root__: typeof rootRoute;
+  "/": typeof IndexRoute;
+  "/login": typeof LoginRoute;
+  "/pdf/$pdfId": typeof PdfPdfIdRoute;
 }
 
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/pdf/$pdfId'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/pdf/$pdfId'
-  id: '__root__' | '/' | '/login' | '/pdf/$pdfId'
-  fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: "/" | "/login" | "/pdf/$pdfId";
+  fileRoutesByTo: FileRoutesByTo;
+  to: "/" | "/login" | "/pdf/$pdfId";
+  id: "__root__" | "/" | "/login" | "/pdf/$pdfId";
+  fileRoutesById: FileRoutesById;
 }
 
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LoginRoute: typeof LoginRoute
-  PdfPdfIdRoute: typeof PdfPdfIdRoute
+  IndexRoute: typeof IndexRoute;
+  LoginRoute: typeof LoginRoute;
+  PdfPdfIdRoute: typeof PdfPdfIdRoute;
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   PdfPdfIdRoute: PdfPdfIdRoute,
-}
+};
 
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
 /* ROUTE_MANIFEST_START
 {
