@@ -6,6 +6,8 @@ import { PDFCard } from '@/components/PDFCard';
 import {toast} from 'sonner';
 import { LoadingSpinner } from '@/components/ui/loadingSpinner';
 import { useAuth } from '@/context/AuthContext';
+import { useRef } from 'react';
+import { Input } from '@/components/ui/input';
 
 
 export const Route = createFileRoute('/')({
@@ -14,6 +16,11 @@ export const Route = createFileRoute('/')({
 
 
 function Index() {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUploadClick = () => {
+        fileInputRef.current?.click();
+    }
 
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -65,6 +72,11 @@ function Index() {
             // invalidate and refetch PDFs query
             await queryClient.invalidateQueries({ queryKey: ['pdfs'] });
 
+            // Reset the file input after successful upload
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+
             toast.success(
                 'PDF uploaded successfully',{
                 duration: 2000,
@@ -91,16 +103,15 @@ function Index() {
     <div>
         <div className='flex justify-between items-center mb-8'>
             <h1 className='text-3xl font-bold'>Your Library</h1>
-            <label className='cursor-pointer'>
-                <Button>Upload PDF
-                    <input type='file'
+            <Input ref={fileInputRef}
+             type='file'
                     accept='application/pdf'
                     onChange={handleFileUpload}
-                    className='hidden'>
-                    </input>
+                    className='hidden'
+                    disabled={!isAuthenticated}>
+                    </Input>
+                <Button onClick={handleFileUploadClick}>Upload PDF
                 </Button>
-
-            </label>
         </div>
 
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
