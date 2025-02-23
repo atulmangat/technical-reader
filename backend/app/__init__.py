@@ -42,7 +42,7 @@ def create_app():
          supports_credentials=True,
          resources={
              r"/*": {
-                 "origins": ["http://localhost:3000"],
+                 "origins": ["http://localhost:3000", "http://localhost:5173"],
                  "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                  "allow_headers": ["Content-Type", "Authorization"],
                  "expose_headers": ["Content-Range", "X-Content-Range"],
