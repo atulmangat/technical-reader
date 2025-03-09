@@ -11,4 +11,4 @@ Pillow==11.1.0
 langchain==0.3.19
 chromadb==0.6.3
 sentence-transformers==3.4.1
-pypdf2==3.0.1 
+pypdf2==3.0.1
