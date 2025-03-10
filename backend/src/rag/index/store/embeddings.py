@@ -19,7 +19,7 @@ class VectorDB:
         """Ensure the collection exists, create it if it doesn't"""
         collections = self.client.get_collections().collections
         collection_names = [collection.name for collection in collections]
-        
+
         if self.collection_name not in collection_names:
             # Create the collection with appropriate vector size
             # Assuming 768-dimensional vectors for sentence-transformers
@@ -54,13 +54,13 @@ class VectorDB:
                         payload={"text": chunk, "pdf_id": str(pdf_id)},
                     )
                 )
-            
+
             # Upload points in batch
             self.client.upsert(
                 collection_name=self.collection_name,
                 points=points,
             )
-            
+
             self.logger.info(
                 f"Successfully stored {len(chunks)} embeddings for PDF {pdf_id}"
             )
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     search_results = vec_db.search_embeddings(
         query_embedding=[0.2, 0.2, 0.3],  # Example vector
         pdf_id="pdf123",  # Optional
-        top_k=5
+        top_k=5,
     )
 
     print(search_results)

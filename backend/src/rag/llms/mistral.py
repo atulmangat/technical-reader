@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class MistralLLM(LLM):
     def __init__(self, model: str = "mistral-large-latest", api_key: str = None):
         """

@@ -1,6 +1,7 @@
 import fitz  # PyMuPDF
 from ..llms.deepseek import DeepseekLLM
 
+
 # Step 1: Function to extract pages after finding a term
 def extract_pages_after_term(doc, terms, num_pages=20):
     """
@@ -35,23 +36,33 @@ def extract_first_n_pages(doc, n=20):
     n = min(n, len(doc) - 1)
     # Combine the text of the first n pages
     return "\n".join([doc[i].get_text() for i in range(n)])
-    
+
 
 # Step 3: Main function to generate chapter mapping
 def generate_chapter_mapping(pdf_path):
     # List of terms for ToC-like sections
     doc = fitz.open(pdf_path)
     terms = [
-        "Table of Contents", "Contents", "List of Chapters", "Index", "Outline",
-        "Structure", "List of Sections", "Section Overview", "Features", "Articles",
-        "Navigation", "Menu", "Site Map"
+        "Table of Contents",
+        "Contents",
+        "List of Chapters",
+        "Index",
+        "Outline",
+        "Structure",
+        "List of Sections",
+        "Section Overview",
+        "Features",
+        "Articles",
+        "Navigation",
+        "Menu",
+        "Site Map",
     ]
-    
+
     # Extract the content
     extracted_content = extract_pages_after_term(doc, terms)
     if extracted_content is None:
         extracted_content = extract_first_n_pages(doc)
-    
+
     # Construct the LLM prompt
     prompt = (
         "You are an expert in parsing document structures. I have extracted text that likely contains "
@@ -105,6 +116,7 @@ def generate_chapter_mapping(pdf_path):
     # Call the LLM
     json_mapping = llm.complete(prompt)
     return json_mapping
+
 
 # Example usage
 if __name__ == "__main__":

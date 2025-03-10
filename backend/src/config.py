@@ -16,7 +16,6 @@ class EmbeddingConfig(BaseModel):
     qdrant_collection_name: str = "document_embeddings"
 
 
-
 class LLMConfig(BaseModel):
     model: str = "deepseek-chat"
     temperature: float = 0.7
