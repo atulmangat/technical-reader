@@ -1,7 +1,7 @@
 from mistralai import Mistral
 from typing import List
 import time
-from ...config import config
+from ....config import config
 import threading
 
 # Initialize the Mistral AI client

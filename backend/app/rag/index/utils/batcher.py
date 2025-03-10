@@ -1,8 +1,8 @@
 import logging
-from ..store.embedding import VectorDB
+from ..store.embeddings import VectorDB
 from .cache import LRUCache
 from .embed import generate_embeddings_batch
-from ...config import config
+from ....config import config
 
 
 class EmbeddingBatcher:

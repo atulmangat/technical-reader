@@ -1,4 +1,7 @@
 # implement the tool class for the embeddings
+from typing import List
+from tool import Tool
+from ..store.embeddings import VectorDB
 
 
 class EmbeddingsTool(Tool):
@@ -10,4 +13,5 @@ class EmbeddingsTool(Tool):
         )
 
     def search_embeddings(self, query: str, top_k: int = 5) -> List[str]:
+        vec_db = VectorDB()
         return vec_db.search_embeddings(query, top_k)

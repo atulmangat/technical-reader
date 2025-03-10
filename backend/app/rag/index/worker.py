@@ -4,11 +4,10 @@ import time
 import logging
 from .queue import PDFQueue
 from .utils.batcher import EmbeddingBatcher
-from .store.embedding import VectorDB
-from .store.keyword import KeywordDB
-from ...app.utils.models import PDF
+from .store.embeddings import VectorDB
+from ...models.pdf import PDF
 from typing import Dict, Any
-from ..config import config
+from ...config import config
 import threading
 
 
@@ -18,12 +17,10 @@ class PDFWorker:
         queue: PDFQueue,
         embedding_batcher: EmbeddingBatcher,
         vector_db: VectorDB,
-        keyword_db: KeywordDB,
     ):
         self.queue = queue
         self.embedding_batcher = embedding_batcher
         self.vector_db = vector_db
-        self.keyword_db = keyword_db
         self.logger = logging.getLogger(__name__)
         self.is_running = False
         self.worker_thread = None
@@ -68,7 +65,8 @@ class PDFWorker:
 
             current_chunk = ""
             for para in paragraphs:
-                # If adding this paragraph would exceed max_chunk_size, save current chunk and start new one
+                # If adding this paragraph would exceed max_chunk_size, save current
+                # chunk and start new one
                 if (
                     self.word_count(current_chunk) + self.word_count(para)
                     > config.pdf_chunk_config.max_chunk_size
@@ -102,26 +100,15 @@ class PDFWorker:
                         chunks.append(chunk)
                     i += config.pdf_chunk_config.max_chunk_size
 
-            # Store the chunks in keyword database
-            return self.keyword_db.store_chunks(chunks, pdf_id)
-
         except Exception as e:
             self.logger.error(f"Error chunking and storing PDF {pdf_id}: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     def process_pdf(self, pdf_path: str, pdf_id: str) -> None:
-        """Process PDF and generate embeddings and keyword index"""
+        """Process PDF and generate embeddings index"""
         # Extract text from PDF
         self.logger.info(f"Extracting text from PDF {pdf_id}")
         text = self.extract_text_from_pdf(pdf_path)
-
-        # Generate keyword index
-        self.logger.info(f"Generating keyword index for PDF {pdf_id}")
-        keyword_result = self.chunk_and_store_pdf(text, pdf_id)
-        if keyword_result.get("status") == "error":
-            raise Exception(
-                f"Failed to generate keyword index: {keyword_result.get('message')}"
-            )
 
         # Split text into chunks for embeddings
         self.logger.info(f"Creating text chunks for embeddings for PDF {pdf_id}")

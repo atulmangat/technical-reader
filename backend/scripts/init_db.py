@@ -5,9 +5,6 @@ import os
 def init_db():
     app = create_app()
 
-    # Create ChromaDB directory
-    os.makedirs("db/chroma", exist_ok=True)
-
     with app.app_context():
         # Drop all tables
         db.drop_all()

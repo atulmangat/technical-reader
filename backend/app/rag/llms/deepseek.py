@@ -54,12 +54,19 @@ class DeepseekLLM(LLM):
             "presence_penalty": 0.0,
         }
 
-        with httpx.Client(base_url=self.api_base) as client:
-            response = client.post(
-                "/v1/chat/completions", json=payload, headers=headers
-            )
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+        try:
+            with httpx.Client(base_url=self.api_base, timeout=120.0) as client:
+                response = client.post(
+                    "/v1/chat/completions", json=payload, headers=headers
+                )
+                response.raise_for_status()
+                return response.json()["choices"][0]["message"]["content"]
+        except httpx.ReadTimeout:
+            print("Request to DeepSeek API timed out. Returning empty result.")
+            return "{}"
+        except Exception as e:
+            print(f"Error calling DeepSeek API: {str(e)}")
+            return "{}"
 
     async def stream(
         self, prompt: str, max_tokens: int = 1024, temperature: float = 0.7

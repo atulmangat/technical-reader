@@ -107,19 +107,20 @@ def generate_prompt(system_message: str = None) -> str:
 
     # Default system message if none provided
     if not system_message:
-        system_message = """You are an AI assistant with access to a set of tools to help answer user questions.
-When a user asks a question, you should determine which tool(s) would be most helpful and use them.
-Format your response using the following syntax when you want to use a tool:
-<tool>
-name: [tool name]
-parameters:
-  [parameter name]: [parameter value]
-  [parameter name]: [parameter value]
-  ...
-</tool>
+        system_message = """You are an AI assistant with access to a set of tools
+        to help answer user questions. When a user asks a question, you should
+        determine which tool(s) would be most helpful and use them.
+        Format your response using the following syntax when you want to use a tool:
+        <tool>
+        name: [tool name]
+        parameters:
+        [parameter name]: [parameter value]
+        [parameter name]: [parameter value]
+        ...
+        </tool>
 
-You can use multiple tools by including multiple tool blocks.
-After using tools, provide a helpful response based on the tool results."""
+        You can use multiple tools by including multiple tool blocks.
+        After using tools, provide a helpful response based on the tool results."""
 
     # Format the tool descriptions for the prompt
     tools_section = "Available tools:\n\n"
@@ -132,7 +133,11 @@ After using tools, provide a helpful response based on the tool results."""
             tools_section += "Parameters:\n"
             for param in tool["parameters"]:
                 required = " (required)" if param.get("required", False) else ""
-                tools_section += f"  - {param['name']}: {param.get('description', 'No description')} Type: {param.get('type', 'any')}{required}\n"
+                tools_section += (
+                    f"  - {param['name']}: "
+                    f"{param.get('description', 'No description')} "
+                    f"Type: {param.get('type', 'any')}{required}\n"
+                )
 
         tools_section += "\n"
 

@@ -3,7 +3,9 @@ from typing import AsyncGenerator
 from mistralai import Mistral
 from fastapi import HTTPException
 from .llm import LLM
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class MistralLLM(LLM):
     def __init__(self, model: str = "mistral-large-latest", api_key: str = None):

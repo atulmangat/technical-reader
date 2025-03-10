@@ -12,8 +12,7 @@ from ..app.utils.models import PDF, User
 from .index.worker import PDFEmbeddingPipeline
 from .index.queue import PDFQueue
 from .index.utils.batcher import EmbeddingBatcher
-from .index.store.embedding import VectorDB
-from .index.store.keyword import KeywordDB
+from .index.store.embeddings import VectorDB
 from .index.worker import PDFWorker
 
 router = APIRouter()
@@ -22,9 +21,8 @@ pdf_pipeline = PDFEmbeddingPipeline()
 # Initialize PDF worker components
 pdf_queue = PDFQueue()
 vector_db = VectorDB()
-keyword_db = KeywordDB()
 embedding_batcher = EmbeddingBatcher(vector_db)
-pdf_worker = PDFWorker(pdf_queue, embedding_batcher, vector_db, keyword_db)
+pdf_worker = PDFWorker(pdf_queue, embedding_batcher, vector_db)
 
 # Start the PDF worker thread
 pdf_worker.start()

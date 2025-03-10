@@ -41,7 +41,7 @@ An interactive PDF viewer with AI-powered chat, highlighting, and note-taking ca
    # On Windows
    .\venv\Scripts\Activate
    # On Unix-like systems (Linux and macOS)
-   source venv/bin/activate 
+   source venv/bin/activate
    ```
 
 4. Install dependencies:
@@ -70,11 +70,17 @@ An interactive PDF viewer with AI-powered chat, highlighting, and note-taking ca
 2. Install dependencies:
    ```bash
    npm install
-   ```      
+   ```
 
 3. Start the development server:
    ```bash
    npm start
    ```
+
+
+# Run postgres
+```bash
+docker run --name postgres-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=app -p 5432:5432 -d postgres:latest
+```
 
 

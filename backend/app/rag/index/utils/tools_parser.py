@@ -2,7 +2,7 @@ import re
 from typing import List, Dict, Any, Tuple
 import json
 import logging
-from .prompt import get_available_tools
+from .tools_prompt import get_available_tools
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,8 @@ class ToolParser:
         tool = self.tools[tool_name]
 
         # Find the appropriate method to call
-        # By default, we'll look for an 'execute' method or a method with the same name as the tool
+        # By default, we'll look for an 'execute' method or a method with the same name
+        # as the tool
         method_name = "execute"
         if not hasattr(tool, method_name):
             # Try to find a method that matches the tool name (without 'Tool' suffix)

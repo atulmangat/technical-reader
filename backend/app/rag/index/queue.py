@@ -72,7 +72,8 @@ class PDFQueue:
                             pdf.processing_status = "processing"
                             db.commit()
                             self.logger.info(
-                                f"Updated PDF {pdf_id} status to 'processing' in database"
+                                f"Updated PDF {pdf_id} status to 'processing' "
+                                f"in database"
                             )
                     except Exception as e:
                         self.logger.error(
