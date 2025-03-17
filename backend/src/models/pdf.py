@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     DateTime,
+    JSON,
 )
 from sqlalchemy.orm import relationship
 from .base import Base
@@ -24,11 +25,13 @@ class PDF(Base):
     description = Column(Text)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    total_pages = Column(Integer, nullable=True)
     has_embeddings = Column(Boolean, default=False)
     processing_error = Column(String, nullable=True)
     processing_status = Column(
         String(20), default="pending"
     )  # pending, processing, processed, failed
+    table_of_contents = Column(JSON, nullable=True)
 
     # Relationships
     notes = relationship("Note", back_populates="pdf", cascade="all, delete-orphan")

@@ -13,30 +13,50 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
 import shutil
-from ...core.database import get_db
-from ...models.models import PDF, PDFResponse
-from ...core.auth import get_current_user
+from ...utils.database import get_db
+from ...models.pdf import PDF
+from ...utils.auth import get_current_user
 from ...utils.common import generate_pdf_thumbnail
 from ...rag.index.worker import PDFEmbeddingPipeline
 from ...rag.index.queue import PDFQueue
-
+from pydantic import BaseModel
+import fitz
 router = APIRouter()
 
 # Initialize the embedding pipeline
 pdf_pipeline = PDFEmbeddingPipeline()
 
-# Initialize the PDF processing queue
-pdf_queue = PDFQueue()
+# Use the queue from the pipeline instead of creating a new one
+pdf_queue = pdf_pipeline.queue
 
 
-@router.get("/api/pdfs", response_model=List[PDFResponse])
-def get_pdfs(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    pdfs = db.query(PDF).filter(PDF.user_id == current_user.id).all()
+class PDFResponse(BaseModel):
+    id: int
+    title: str
+    filename: str
+    file_path: str
+    thumbnail_path: str
+    file_size: int
+
+
+def get_total_pages(file_path: str) -> int:
+    with open(file_path, "rb") as file:
+        reader = fitz.open(file)
+        return reader.page_count
+
+@router.get("/", response_model=List[PDFResponse])
+def get_pdfs(
+    current_user=Depends(get_current_user), 
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 20
+):
+    pdfs = db.query(PDF).filter(PDF.user_id == current_user.id).offset(skip).limit(limit).all()
     return pdfs
 
 
 @router.post(
-    "/api/pdf", response_model=PDFResponse, status_code=status.HTTP_201_CREATED
+    "/", response_model=PDFResponse, status_code=status.HTTP_201_CREATED
 )
 def upload_pdf(
     background_tasks: BackgroundTasks,
@@ -65,6 +85,9 @@ def upload_pdf(
 
     # Generate thumbnail
     thumbnail_path = generate_pdf_thumbnail(file_path)
+    
+    # Get total pages
+    total_pages = get_total_pages(file_path)
 
     # Create PDF record
     pdf = PDF(
@@ -76,23 +99,31 @@ def upload_pdf(
         description=description,
         user_id=current_user.id,
         has_embeddings=False,
+        total_pages=total_pages
     )
 
     db.add(pdf)
     db.commit()
     db.refresh(pdf)
 
-    # Add PDF to processing queue as a background task
-    background_tasks.add_task(pdf_queue.add_to_queue, pdf.id, file_path, db)
+    pdf_queue.add_to_queue(pdf.id, file_path, db)
 
     return pdf
 
 
-@router.get("/api/pdf/{pdf_id}")
-def get_pdf(pdf_id: int, db: Session = Depends(get_db)):
-    pdf = db.query(PDF).filter(PDF.id == pdf_id).first()
+@router.get("/{pdf_id}")
+def get_pdf(
+    pdf_id: int, 
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    pdf = db.query(PDF).filter(
+        PDF.id == pdf_id,
+        PDF.user_id == current_user.id
+    ).first()
+    
     if not pdf:
-        raise HTTPException(status_code=404, detail="PDF not found")
+        raise HTTPException(status_code=404, detail="PDF not found or you don't have access to it")
 
     if not os.path.exists(pdf.file_path):
         raise HTTPException(status_code=404, detail="PDF file not found")

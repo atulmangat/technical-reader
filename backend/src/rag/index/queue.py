@@ -3,7 +3,7 @@ import logging
 import threading
 from datetime import datetime
 from sqlalchemy.orm import Session
-from ...models import PDF
+from ...models.pdf import PDF
 
 
 class PDFQueue:
@@ -12,6 +12,8 @@ class PDFQueue:
         logging.basicConfig(level=logging.INFO)
         self.lock = threading.Lock()
         self.logger = logging.getLogger(__name__)
+        self.total_added = 0
+        self.total_processed = 0
 
     def add_to_queue(self, pdf_id: int, pdf_path: str, db: Session = None) -> None:
         """Add a PDF to the processing queue"""
@@ -21,11 +23,10 @@ class PDFQueue:
                 "pdf_path": pdf_path,
                 "status": "pending",
                 "added_at": datetime.utcnow().isoformat(),
-                "db": db,
             }
             # Add to the in-memory queue
             self.queue.append(queue_item)
-            self.logger.info(f"Added PDF {pdf_id} to processing queue")
+            self.total_added += 1
 
             # Update status in database if db session is provided
             if db:
@@ -50,9 +51,16 @@ class PDFQueue:
             status = item.get("status", "unknown")
             status_counts[status] = status_counts.get(status, 0) + 1
 
-        return {"queue_size": len(self.queue), "status_counts": status_counts}
+        queue_status = {
+            "queue_size": len(self.queue), 
+            "status_counts": status_counts,
+            "total_added": self.total_added,
+            "total_processed": self.total_processed
+        }
+        
+        return queue_status
 
-    def get_next_item(self) -> Dict[str, Any]:
+    def get_next_item(self, db: Session = None) -> Dict[str, Any]:
         """Get the next item from the processing queue"""
         if len(self.queue) == 0:
             return None
@@ -64,7 +72,6 @@ class PDFQueue:
 
                 # Update status in database if db session is provided
                 pdf_id = self.queue[0].get("pdf_id")
-                db = self.queue[0].get("db")
                 if db and pdf_id:
                     try:
                         pdf = db.query(PDF).filter(PDF.id == pdf_id).first()
@@ -79,13 +86,19 @@ class PDFQueue:
                         self.logger.error(
                             f"Error updating PDF {pdf_id} status in database: {str(e)}"
                         )
-
-        return self.queue[0]
+                return self.queue[0]
+            else:
+                return None
 
     def pop_from_queue(self) -> Dict[str, Any]:
         """Pop a PDF from the processing queue"""
         with self.lock:
             if len(self.queue) == 0:
                 return None
-
-            return self.queue.pop(0)
+            
+            item = self.queue.pop(0)
+            self.total_processed += 1
+            pdf_id = item.get("pdf_id")
+            self.logger.info(f"Total PDFs added: {self.total_added}, Total processed: {self.total_processed}")
+            
+            return item

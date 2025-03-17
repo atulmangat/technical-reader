@@ -1,5 +1,4 @@
 import re
-import numpy as np
 import nltk
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import stopwords
@@ -9,9 +8,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import fitz  # PyMuPDF
 import ssl
 from typing import List, Optional
+from sqlalchemy.orm import Session
+from .tool_interface import ToolInterface
+from ...models.pdf import PDF
+from ...utils.database import get_db
 
 
-def ensure_nltk_resources():
+def _ensure_nltk_resources():
     """
     Ensure NLTK resources are available, handling SSL certificate issues
     """
@@ -35,7 +38,7 @@ def ensure_nltk_resources():
             print("Falling back to basic tokenization")
 
 
-def basic_tokenize(text):
+def _basic_tokenize(text):
     """
     Basic sentence tokenization fallback if NLTK fails
     """
@@ -46,7 +49,7 @@ def basic_tokenize(text):
     return [s.strip() for s in text.split("\n") if s.strip()]
 
 
-def extract_key_sentences_textrank(
+def _extract_key_sentences_textrank(
     pdf_path: str,
     pages: Optional[List[int]] = None,
     max_sentences: int = 10,
@@ -68,7 +71,7 @@ def extract_key_sentences_textrank(
         List of extracted key sentences
     """
     # Try to ensure NLTK resources are available
-    ensure_nltk_resources()
+    _ensure_nltk_resources()
 
     # Extract text from PDF
     doc = fitz.open(pdf_path)
@@ -94,7 +97,7 @@ def extract_key_sentences_textrank(
     try:
         sentences = sent_tokenize(full_text)
     except:
-        sentences = basic_tokenize(full_text)
+        sentences = _basic_tokenize(full_text)
 
     # Filter out too short or too long sentences
     filtered_sentences = [
@@ -304,9 +307,10 @@ def extract_key_sentences_textrank(
 
 
 def get_key_sentences_for_summary(
-    pdf_path: str,
-    pages: Optional[List[int]] = None,
+    pdf_id: int,
+    pages: Optional[List[int]] = [],
     max_sentences: int = 15,
+    db: Session = None
 ) -> str:
     """
     Wrapper function to extract key sentences and format them for use in LLM summarization
@@ -320,8 +324,14 @@ def get_key_sentences_for_summary(
     Returns:
         String containing key sentences formatted for summarization
     """
-    sentences = extract_key_sentences_textrank(pdf_path, pages, max_sentences)
-
+    if db is None:
+        db = next(get_db())
+    print(f"Pages: {pages}")
+    pdf = db.query(PDF).filter(PDF.id == pdf_id).first()
+    if pdf is None:
+        raise ValueError(f"PDF with id {pdf_id} not found")
+    pdf_path = pdf.file_path
+    sentences = _extract_key_sentences_textrank(pdf_path, pages, max_sentences)
     if not sentences:
         return "No significant content could be extracted from the provided pages."
 
@@ -330,4 +340,49 @@ def get_key_sentences_for_summary(
     for sentence in sentences:
         formatted_text += f"• {sentence}\n\n"
 
+    print(f"Formatted text: {formatted_text}")
+    
     return formatted_text
+
+
+# Create a summary tool interface
+summary_tool = ToolInterface(
+    name="summary",
+    description="""
+    The summary tool extracts and summarizes key information from PDF documents. 
+    
+    How to use this tool:
+    - When a user asks for a summary of the entire document: "Can you summarize this document for me?" or "Give me a summary of chapter two?" 
+    - Use atleast 200 sentences to summarize the document and 100 sentences to summarize a chapter.
+    - When a user wants a summary of specific pages: "Summarize pages 5-10" or "What are the key points on page 15?"
+    - When a user requests a summary of a specific chapter: "Give me a summary of chapter 2" or "What's chapter 3 about?"
+    - When a user wants the main ideas or key points: "What are the main ideas in this document?" or "Extract the key points"
+    - When user asks for list of topics or chapter prefer using table of contents to answer the user's query.
+    
+    The tool uses TextRank algorithm to identify the most important sentences in the document and presents them as bullet points.
+    """
+)
+
+# Set the injectable parameters for this tool
+summary_tool.set_injectable_params({"db"})
+
+@summary_tool.register_function
+def get_summary(pdf_id: int, pages: Optional[List[int]] = [], max_sentences: int = 15, db: Session = None) -> str:
+    """
+    Extract key sentences from a PDF and format them for summarization
+    
+    Args:
+        pdf_id: ID of the PDF document
+        pages: List of page numbers to analyze (1-based indexing)
+        max_sentences: Maximum number of key sentences to return
+        
+    Returns:
+        Formatted string containing key sentences for summarization
+    """
+    print("Getting summary called")
+    if db is None:
+        raise ValueError("Database session is required but not provided")
+    # Handle the case where pages is an empty list
+    if not pages:
+        pages = None
+    return get_key_sentences_for_summary(pdf_id, pages, max_sentences, db)

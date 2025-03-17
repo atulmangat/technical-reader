@@ -8,7 +8,10 @@ from .store.embeddings import VectorDB
 from ...models.pdf import PDF
 from typing import Dict, Any
 from ...config import config
+from ...utils.database import get_db
+from .utils.content import parse_table_of_contents
 import threading
+import concurrent.futures
 
 
 class PDFWorker:
@@ -24,6 +27,12 @@ class PDFWorker:
         self.logger = logging.getLogger(__name__)
         self.is_running = False
         self.worker_thread = None
+        # Add progress tracking variables
+        self.current_pdf_id = None
+        self.total_chunks = 0
+        self.processed_chunks = 0
+        # Thread pool for parallel processing
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
     def extract_text_from_pdf(self, pdf_path: str) -> str:
         """Extract text from PDF using PyMuPDF (fitz)"""
@@ -104,71 +113,98 @@ class PDFWorker:
             self.logger.error(f"Error chunking and storing PDF {pdf_id}: {str(e)}")
             return {"status": "error", "message": str(e)}
 
+    def process_toc_in_parallel(self, pdf_id: str):
+        """Process table of contents in a separate thread"""
+        try:
+            self.logger.info(f"Starting table of contents extraction for PDF {pdf_id}")
+            parse_table_of_contents(pdf_id)
+            self.logger.info(f"Completed table of contents extraction for PDF {pdf_id}")
+        except Exception as e:
+            self.logger.error(f"Error processing table of contents for PDF {pdf_id}: {str(e)}")
+
     def process_pdf(self, pdf_path: str, pdf_id: str) -> None:
         """Process PDF and generate embeddings index"""
         # Extract text from PDF
-        self.logger.info(f"Extracting text from PDF {pdf_id}")
         text = self.extract_text_from_pdf(pdf_path)
 
         # Split text into chunks for embeddings
-        self.logger.info(f"Creating text chunks for embeddings for PDF {pdf_id}")
         chunks = self.create_text_chunks(text)
+        
+        # Reset progress tracking for new PDF
+        self.current_pdf_id = pdf_id
+        self.total_chunks = len(chunks)
+        self.processed_chunks = 0
+        self.logger.info(f"Starting to process {self.total_chunks} chunks for PDF {pdf_id}")
 
+        # Start table of contents extraction in parallel
+        toc_future = self.executor.submit(self.process_toc_in_parallel, pdf_id)
+        
         # Process each chunk
         for chunk in chunks:
             self.embedding_batcher.process_chunk(chunk, pdf_id)
+            # Update and log progress
+            self.processed_chunks += 1
+        
+        # Wait for TOC processing to complete if it's still running
+        if not toc_future.done():
+            self.logger.info(f"Waiting for table of contents extraction to complete for PDF {pdf_id}")
+            toc_future.result()  # This will wait for the future to complete
 
     def _process_queue(self) -> None:
         """Process PDFs in the queue"""
         self.logger.info("Starting PDF processing worker")
         self.is_running = True
-
+        db = next(get_db())
         while self.is_running:
             try:
                 # Get the next PDF from the queue
-                pdf_data = self.queue.get_next_item()
-
+                pdf_data = self.queue.get_next_item(db)
+                
                 if not pdf_data:
-                    # Queue is empty, sleep for a bit before checking again
                     time.sleep(5)
                     continue
 
                 pdf_id = pdf_data["pdf_id"]
                 pdf_path = pdf_data["pdf_path"]
-                db_instance = pdf_data.get("db")
-
-                self.logger.info(f"Processing PDF {pdf_id}")
-
                 try:
                     # Process the PDF
                     self.process_pdf(pdf_path, pdf_id)
 
-                    # Update database status
-                    if db_instance:
-                        with db_instance.app.app_context():
-                            pdf = db_instance.session.query(PDF).get(pdf_id)
-                            if pdf:
-                                pdf.has_embeddings = True
-                                pdf.processing_status = "completed"
-                                db_instance.session.commit()
-                                self.logger.info(f"Successfully processed PDF {pdf_id}")
-                            else:
-                                self.logger.error(f"PDF {pdf_id} not found in database")
+                    try:
+                        pdf = db.query(PDF).filter(PDF.id == pdf_id).first()
+                        if pdf: 
+                            pdf.has_embeddings = True
+                            pdf.processing_status = "completed"
+                            db.commit()
+                            self.logger.info(f"Successfully processed PDF {pdf_id}")
+                        else:
+                            self.logger.error(f"PDF {pdf_id} not found in database")
+                    finally:
+                        db.close()
 
                 except Exception as e:
                     self.logger.error(f"Error processing PDF {pdf_id}: {str(e)}")
-                    if db_instance:
-                        with db_instance.app.app_context():
-                            pdf = db_instance.session.query(PDF).get(pdf_id)
-                            if pdf:
-                                pdf.has_embeddings = False
-                                pdf.processing_status = "failed"
-                                pdf.processing_error = str(e)
-                                db_instance.session.commit()
+                    
+                    try:
+                        pdf = db.query(PDF).filter(PDF.id == pdf_id).first()
+                        if pdf:
+                            pdf.has_embeddings = False
+                            pdf.processing_status = "failed"
+                            pdf.processing_error = str(e)
+                            db.commit()
+                    finally:
+                        db.close()
 
                 finally:
                     # Remove the item from the queue
                     self.queue.pop_from_queue()
+                    self.logger.info(f"Removed PDF {pdf_id} from queue")
+                    
+                    # Reset progress tracking variables after processing is complete
+                    self.current_pdf_id = None
+                    self.total_chunks = 0
+                    self.processed_chunks = 0
+                    self.logger.info("Reset progress tracking variables")
 
             except Exception as e:
                 self.logger.error(f"Queue processing error: {str(e)}")
@@ -190,6 +226,80 @@ class PDFWorker:
             self.is_running = False
             if self.worker_thread:
                 self.worker_thread.join(timeout=5)
+            # Shutdown the thread pool executor
+            self.executor.shutdown(wait=False)
             self.logger.info("PDF worker stopped")
             return True
         return False
+
+class PDFEmbeddingPipeline:
+    """
+    A wrapper class that initializes and manages the PDF embedding pipeline components.
+    This class is used as the main entry point for the PDF embedding process.
+    """
+    def __init__(self, enable_monitor=True, monitor_interval=10):
+        self.queue = PDFQueue()
+        self.embedding_batcher = EmbeddingBatcher()
+        self.vector_db = VectorDB()
+        self.worker = PDFWorker(self.queue, self.embedding_batcher, self.vector_db)
+        self.logger = logging.getLogger(__name__)
+        self.monitor = None
+        self.enable_monitor = enable_monitor
+        self.monitor_interval = monitor_interval
+        
+    def start(self):
+        """Start the PDF embedding pipeline"""
+        worker_started = self.worker.start()
+        
+        # Start the monitor if enabled
+        if worker_started and self.enable_monitor:
+            try:
+                # Import here to avoid circular imports
+                from .monitor import PDFProcessingMonitor
+                self.monitor = PDFProcessingMonitor(self, interval_seconds=self.monitor_interval)
+                self.monitor.start()
+            except Exception as e:
+                self.logger.error(f"Failed to start monitor: {str(e)}")
+                
+        return worker_started
+        
+    def stop(self):
+        """Stop the PDF embedding pipeline"""
+        # Stop the monitor if it's running
+        if self.monitor:
+            try:
+                self.monitor.stop()
+                self.logger.info("Stopped progress monitor")
+            except Exception as e:
+                self.logger.error(f"Error stopping monitor: {str(e)}")
+                
+        # Stop the worker
+        return self.worker.stop()
+        
+    def get_queue_status(self):
+        """Get the status of the PDF processing queue"""
+        return self.queue.get_queue_status()
+        
+    def get_detailed_progress(self):
+        """Get detailed progress information about the PDF processing pipeline"""
+        queue_status = self.queue.get_queue_status()
+        
+        # Get current processing progress if available
+        current_progress = {
+            "current_pdf_id": self.worker.current_pdf_id,
+            "total_chunks": self.worker.total_chunks,
+            "processed_chunks": self.worker.processed_chunks,
+            "progress_percentage": 0
+        }
+        
+        if self.worker.total_chunks > 0:
+            current_progress["progress_percentage"] = (self.worker.processed_chunks / self.worker.total_chunks) * 100
+            
+        # Combine all information
+        detailed_progress = {
+            "queue_status": queue_status,
+            "current_progress": current_progress,
+            "worker_running": self.worker.is_running
+        }
+        
+        return detailed_progress

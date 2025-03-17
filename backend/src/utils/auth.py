@@ -5,11 +5,18 @@ from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
 from .database import get_db
-from ..models.models import User
+from ..models.user import User
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Secret key for JWT
-SECRET_KEY = os.getenv("SECRET_KEY")
+# Ensure SECRET_KEY is a string and has a default value if not found in environment variables
+SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_for_development_only")
+if SECRET_KEY is None:
+    SECRET_KEY = "default_secret_key_for_development_only"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
 

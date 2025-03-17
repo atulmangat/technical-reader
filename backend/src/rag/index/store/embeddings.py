@@ -1,8 +1,9 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from ....config import config
+import uuid
 
 
 class VectorDB:
@@ -22,11 +23,10 @@ class VectorDB:
 
         if self.collection_name not in collection_names:
             # Create the collection with appropriate vector size
-            # Assuming 768-dimensional vectors for sentence-transformers
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=models.VectorParams(
-                    size=768,  # Adjust based on your embedding model
+                    size=config.embedding_config.vector_size,  # Adjust based on your embedding model
                     distance=models.Distance.COSINE,
                 ),
             )
@@ -47,9 +47,11 @@ class VectorDB:
             # Prepare points for batch upload
             points = []
             for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                # Generate a unique ID for the point
+                point_id = str(uuid.uuid4())
                 points.append(
                     models.PointStruct(
-                        id=f"{pdf_id}-{i}",
+                        id=point_id,
                         vector=embedding,
                         payload={"text": chunk, "pdf_id": str(pdf_id)},
                     )
@@ -59,10 +61,6 @@ class VectorDB:
             self.client.upsert(
                 collection_name=self.collection_name,
                 points=points,
-            )
-
-            self.logger.info(
-                f"Successfully stored {len(chunks)} embeddings for PDF {pdf_id}"
             )
         except Exception as e:
             self.logger.error(f"Error storing embeddings for PDF {pdf_id}: {str(e)}")
@@ -105,7 +103,7 @@ class VectorDB:
             return {"status": "error", "message": str(e)}
 
     def search_embeddings(
-        self, query_embedding: List[float], pdf_id: Optional[str] = None, top_k: int = 5
+        self, pdf_id: int, query_embedding: List[float], top_k: int = 5
     ) -> Dict[str, Any]:
         """
         Search for similar embeddings
@@ -157,22 +155,5 @@ class VectorDB:
             return {"status": "error", "message": str(e)}
 
 
-if __name__ == "__main__":
-    # Initialize VectorDB
-    vec_db = VectorDB()
-
-    # Store embeddings
-    vec_db.store_embeddings(
-        chunks=["text chunk 1", "text chunk 2"],
-        embeddings=[[0.1, 0.2, 0.3], [0.3, 0.4, 0.5]],  # Example vectors
-        pdf_id="pdf123",
-    )
-
-    # Search embeddings (optionally filtered by PDF)
-    search_results = vec_db.search_embeddings(
-        query_embedding=[0.2, 0.2, 0.3],  # Example vector
-        pdf_id="pdf123",  # Optional
-        top_k=5,
-    )
-
-    print(search_results)
+def get_vector_db() -> VectorDB:
+    return VectorDB()

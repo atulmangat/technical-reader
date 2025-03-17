@@ -2,13 +2,18 @@ from .routes.v1 import auth, highlights, notes, pdf, rag
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .core.database import engine
-from .models.models import Base
+from .utils.database import engine
+from .models.base import Base
 import os
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+# Set httpx logger to WARNING level to suppress HTTP request logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Check for required environment variables
 required_env_vars = ["DEEPSEEK_API_KEY", "MISTRAL_API_KEY"]
@@ -48,15 +53,38 @@ app.add_middleware(
 app.mount("/thumbnails", StaticFiles(directory=thumbnails_path), name="thumbnails")
 
 # Include routers
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(pdf.router, prefix="/api/pdfs", tags=["PDF Management"])
-app.include_router(notes.router, prefix="/api/pdfs/{pdf_id}/notes", tags=["Notes"])
+app.include_router(notes.router, prefix="/api/pdfs", tags=["Notes"])
 app.include_router(
-    highlights.router, prefix="/api/pdfs/{pdf_id}/highlights", tags=["Highlights"]
+    highlights.router, prefix="/api/pdfs", tags=["Highlights"]
 )
-app.include_router(rag.router, prefix="/api/rag", tags=["RAG"])
+app.include_router(rag.router, prefix="/api/pdfs", tags=["RAG"])
 
+# Setup logging
+logger = logging.getLogger(__name__)
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to PDF Manager API"}
+@app.on_event("startup")
+async def startup_event():
+    """Start the PDF embedding pipeline when the application starts"""
+    from .routes.v1.pdf import pdf_pipeline
+    
+    logger.info("Starting PDF embedding pipeline...")
+    started = pdf_pipeline.start()
+    if started:
+        logger.info("PDF embedding pipeline started successfully")
+    else:
+        logger.warning("PDF embedding pipeline was already running or failed to start")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop the PDF embedding pipeline when the application shuts down"""
+    from .routes.v1.pdf import pdf_pipeline
+    
+    logger.info("Stopping PDF embedding pipeline...")
+    stopped = pdf_pipeline.stop()
+    if stopped:
+        logger.info("PDF embedding pipeline stopped successfully")
+    else:
+        logger.warning("PDF embedding pipeline was not running or failed to stop")
+

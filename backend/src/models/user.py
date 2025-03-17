@@ -2,6 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from passlib.context import CryptContext
+from pydantic import BaseModel
 from .base import Base
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -26,3 +27,4 @@ class User(Base):
 
     def check_password(self, password):
         return pwd_context.verify(password, self.password_hash)
+

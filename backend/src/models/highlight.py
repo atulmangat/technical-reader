@@ -8,11 +8,20 @@ class Highlight(Base):
     __tablename__ = "highlights"
 
     id = Column(Integer, primary_key=True, index=True)
-    text = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)
     page_number = Column(Integer, nullable=False)
     color = Column(String(20), default="yellow")
-    x_position = Column(Float)
-    y_position = Column(Float)
+    note = Column(Text, nullable=True)
+    
+    # These columns might not exist in the database yet
+    # If you get SQLAlchemy errors about missing columns, you'll need to:
+    # 1. Either remove these columns from the model, or
+    # 2. Run a migration to add these columns to the database
+    x_start = Column(Float, nullable=True)
+    y_start = Column(Float, nullable=True)
+    x_end = Column(Float, nullable=True)
+    y_end = Column(Float, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Foreign keys
@@ -29,4 +38,5 @@ class Highlight(Base):
     __table_args__ = (
         Index("ix_highlights_pdf_id", "pdf_id"),
         Index("ix_highlights_user_id", "user_id"),
+        Index("ix_highlights_page_number", "page_number"),
     )

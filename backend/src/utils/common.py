@@ -1,4 +1,4 @@
-import fitz
+import fitz  # PyMuPDF
 import os
 from PIL import Image
 
@@ -12,13 +12,13 @@ def generate_pdf_thumbnail(pdf_file):
         os.makedirs(thumbnails_dir, exist_ok=True)
 
         # Generate thumbnail filename
-        thumbnail_filename = f"thumb_{os.path.splitext(pdf_file.filename)[0]}.jpg"
+        thumbnail_filename = f"thumb_{os.path.splitext(os.path.basename(pdf_file))[0]}.jpg"
         # Store only the filename in the database
         thumbnail_path = thumbnail_filename
         absolute_thumb_path = os.path.join(thumbnails_dir, thumbnail_filename)
 
         # Create PDF document object
-        doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+        doc = fitz.open(pdf_file)
 
         try:
             # Get the first page
@@ -40,9 +40,11 @@ def generate_pdf_thumbnail(pdf_file):
         finally:
             # Always close the document
             doc.close()
-            # Reset file pointer
-            pdf_file.seek(0)
 
     except Exception as e:
         print(f"Error generating thumbnail: {e}")
         return None
+
+
+
+
