@@ -17,3 +17,6 @@ Requests==2.32.3
 scikit_learn==1.6.1
 SQLAlchemy==2.0.38
 uvicorn==0.34.0
+requests==2.31.0
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0

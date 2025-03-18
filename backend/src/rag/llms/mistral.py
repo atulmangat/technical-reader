@@ -72,15 +72,17 @@ class MistralLLM(LLM):
         try:
             messages = [{"role": "user", "content": prompt}]
 
-            stream_response = self.client.chat.stream_async(
+            # Get the stream response as an async generator
+            stream = self.client.chat.stream(
                 model=self.model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 safe_prompt=True,
             )
-
-            async for chunk in stream_response:
+            
+            # Iterate through the async generator
+            for chunk in stream:
                 if chunk.data.choices[0].delta.content is not None:
                     yield chunk.data.choices[0].delta.content
         except Exception as e:

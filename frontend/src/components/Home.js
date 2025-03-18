@@ -1,38 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { pdfAPI } from '../services/api';
+import { Navbar } from './Navbar';
 import '../css/Home.css';
+import { ThumbnailImage } from './ThumbnailImage';
 
 export function Home() {
     const [pdfs, setPdfs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const navigate = useNavigate();
+    const { isAuthenticated } = useAuth();
 
     useEffect(() => {
-        fetchPdfs();
-    }, []);
+        if (isAuthenticated) {
+            fetchPdfs();
+        }
+    }, [isAuthenticated]);
 
     const fetchPdfs = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/pdfs', {
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.status === 401) {
-                // Handle unauthorized access
-                navigate('/login');
-                return;
+            setLoading(true);
+            const response = await pdfAPI.getAllPdfs();
+
+            if (response.status === 200) {
+                setPdfs(response.data);
             }
-            
-            if (!response.ok) throw new Error('Failed to fetch PDFs');
-            
-            const data = await response.json();
-            setPdfs(data);
         } catch (error) {
             console.error('Error fetching PDFs:', error);
+            if (error.response?.status === 401) {
+                navigate('/login');
+            }
         } finally {
             setLoading(false);
         }
@@ -51,74 +50,86 @@ export function Home() {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', file.name);
+        formData.append('description', '');
 
         try {
-            const response = await fetch('http://localhost:5000/api/pdfs', {
-                method: 'POST',
-                credentials: 'include',
-                body: formData
-            });
+            const response = await pdfAPI.uploadPdf(formData);
 
-            if (!response.ok) {
+            if (response.status === 201) {
+                setPdfs(prev => [...prev, response.data]);
+            } else {
                 throw new Error('Upload failed');
             }
-
-            const result = await response.json();
-            setPdfs(prev => [...prev, result]);
         } catch (error) {
             console.error('Upload error:', error);
-            alert('Failed to upload PDF');
+            alert('Failed to upload PDF: ' + (error.response?.data?.detail || 'Unknown error'));
         } finally {
             setUploading(false);
         }
     };
 
-    return (
-        <div className="home-container">
-            <div className="home-header">
-                <h1>Your Library</h1>
-                <label className="upload-button">
-                    {uploading ? 'Uploading...' : 'Upload PDF'}
-                    <input
-                        type="file"
-                        accept="application/pdf"
-                        onChange={handleFileUpload}
-                        style={{ display: 'none' }}
-                        disabled={uploading}
-                    />
-                </label>
+    if (loading) {
+        return (
+            <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Loading your library...</p>
             </div>
-            <div className="pdf-grid">
-                {pdfs.map(pdf => (
-                    <Link to={`/pdf/${pdf.id}`} key={pdf.id} className="pdf-card">
-                        <div className="pdf-book">
-                            <div className="book-spine">
-                                <span className="book-title">{pdf.title}</span>
-                            </div>
-                            <div className="book-cover">
-                                {pdf.thumbnail_path ? (
-                                    <div className="pdf-thumbnail">
-                                        <img 
-                                            src={`http://localhost:5000/thumbnails/${pdf.thumbnail_path.split('/').pop()}`}
-                                            alt={pdf.title}
-                                        />
+        );
+    }
+
+    return (
+        <div className="home-page">
+            <Navbar />
+            <div className="home-container">
+                <div className="home-header">
+                    <h1>Your Library</h1>
+                    <label className="upload-button">
+                        {uploading ? 'Uploading...' : 'Upload PDF'}
+                        <input
+                            type="file"
+                            accept="application/pdf"
+                            onChange={handleFileUpload}
+                            style={{ display: 'none' }}
+                            disabled={uploading}
+                        />
+                    </label>
+                </div>
+                
+                {pdfs.length === 0 ? (
+                    <div className="empty-library">
+                        <p>Your library is empty. Upload a PDF to get started!</p>
+                    </div>
+                ) : (
+                    <div className="pdf-grid">
+                        {pdfs.map(pdf => (
+                            <Link to={`/pdf/${pdf.id}`} key={pdf.id} className="pdf-card">
+                                <div className="pdf-book">
+                                    <div className="book-spine">
+                                        <span className="book-title">{pdf.title}</span>
                                     </div>
-                                ) : (
-                                    <div className="pdf-thumbnail-placeholder">
-                                        <span className="material-icons" aria-label="PDF document">
-                                            picture_as_pdf
-                                        </span>
+                                    <div className="book-cover">
+                                        {pdf.thumbnail_path ? (
+                                            <div className="pdf-thumbnail">
+                                                <ThumbnailImage pdfId={pdf.id} title={pdf.title} />
+                                            </div>
+                                        ) : (
+                                            <div className="pdf-thumbnail-placeholder">
+                                                <span className="material-icons" aria-label="PDF document">
+                                                    picture_as_pdf
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="pdf-info">
+                                            <h3>{pdf.title}</h3>
+                                            <p>Pages: {pdf.total_pages || 'Unknown'}</p>
+                                        </div>
                                     </div>
-                                )}
-                                <div className="pdf-info">
-                                    <h3>{pdf.title}</h3>
-                                    <p>Uploaded: {new Date(pdf.uploaded_at).toLocaleDateString()}</p>
                                 </div>
-                            </div>
-                        </div>
-                    </Link>
-                ))}
+                            </Link>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
-} 
+}

@@ -9,6 +9,11 @@ export function ResizablePanel({ children, width, minWidth, maxWidth, onResize, 
     const startWidth = useRef(0);
 
     const startResizing = useCallback((e) => {
+        // If this is the left panel (TOC) and it's collapsed (width is 48px), don't allow resizing
+        if (position === 'left' && width === 48) {
+            return;
+        }
+        
         isResizing.current = true;
         startX.current = e.clientX;
         startWidth.current = panelRef.current.offsetWidth;
@@ -16,12 +21,12 @@ export function ResizablePanel({ children, width, minWidth, maxWidth, onResize, 
         document.addEventListener('mouseup', stopResizing);
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
-    }, []);
+    }, [position, width]);
 
     const handleMouseMove = useCallback((e) => {
         if (!isResizing.current) return;
 
-        const delta = position === 'left' 
+        const delta = position === 'left'
             ? e.clientX - startX.current
             : startX.current - e.clientX;
 
@@ -48,16 +53,16 @@ export function ResizablePanel({ children, width, minWidth, maxWidth, onResize, 
     }, [startResizing, handleMouseMove, stopResizing]);
 
     return (
-        <div 
+        <div
             ref={panelRef}
-            className={`resizable-panel ${position}`}
+            className={`resizable-panel ${position} ${width === 48 && position === 'left' ? 'collapsed' : ''}`}
             style={{ width: `${width}px` }}
         >
             {children}
-            <div 
+            <div
                 ref={resizerRef}
                 className={`resizer ${position}`}
             />
         </div>
     );
-} 
+}

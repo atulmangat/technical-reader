@@ -9,7 +9,7 @@ export function HighlightsPanel({ highlights, onHighlightClick, onDeleteHighligh
             </div>
             <div className="highlights-list">
                 {highlights.map((highlight, index) => (
-                    <div 
+                    <div
                         key={index}
                         className="highlight-item"
                         style={{ borderLeft: `4px solid ${highlight.color}` }}
@@ -24,7 +24,7 @@ export function HighlightsPanel({ highlights, onHighlightClick, onDeleteHighligh
                                 </span>
                             </div>
                         </div>
-                        <button 
+                        <button
                             className="delete-highlight"
                             onClick={() => onDeleteHighlight(index)}
                         >
@@ -35,4 +35,4 @@ export function HighlightsPanel({ highlights, onHighlightClick, onDeleteHighligh
             </div>
         </div>
     );
-} 
+}

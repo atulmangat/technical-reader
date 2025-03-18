@@ -2,6 +2,7 @@
     display: flex;
     flex-direction: row;
     height: 100vh;
+    background-color: #ffffff;
 }
 
 .pdf-viewer-column {
@@ -12,7 +13,7 @@
 
 .chat-window-column {
     flex: 1;
-    border-left: 1px solid #ccc;
+    border-left: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
     padding: 10px;
@@ -44,9 +45,14 @@
 }
 
 .error-message {
-    color: red;
+    color: #e53935;
     padding: 20px;
     text-align: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 500;
+    background-color: #ffebee;
+    border-radius: 4px;
+    margin: 10px;
 }
 
 .pdf-viewer-container {
@@ -59,6 +65,25 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Modified TOC collapsed state - focus on flexbox distribution */
+.pdf-content.toc-collapsed {
+    /* Use flex layout with collapsed TOC */
+    display: flex;
+}
+
+/* This ensures the PDF viewer expands when TOC is collapsed */
+.pdf-content.toc-collapsed .pdf-viewer {
+    flex-grow: 2.0; /* Strong growth factor when TOC is collapsed */
+    transition: flex-grow 0.3s ease;
+}
+
+/* Chat panel should also expand when TOC is collapsed */
+.pdf-content.toc-collapsed .right-panel {
+    flex-grow: 1.2; /* More moderate growth for chat */
+    transition: all 0.3s ease;
 }
 
 .pdf-viewer {
@@ -69,10 +94,11 @@
     overflow: auto;
     position: relative;
     padding: 20px 20px 10px 20px;
-    background-color: #e6e6e6;
+    background-color: #f0f2f5;
     scroll-behavior: smooth;
     perspective: 1000px;
     padding-bottom: 80px; /* Space for floating controls */
+    transition: all 0.3s ease;
 }
 
 .pdf-viewer canvas {
@@ -85,9 +111,10 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    background-color: #f5f5f5;
+    background-color: #ffffff;
     border-radius: 8px;
     padding: 20px;
+    border: 1px solid #e0e0e0;
 }
 
 .upload-container h2 {
@@ -96,7 +123,7 @@
 }
 
 .upload-button {
-    background-color: #007bff;
+    background-color: #3a5998;
     color: white;
     padding: 12px 24px;
     border-radius: 4px;
@@ -106,7 +133,7 @@
 }
 
 .upload-button:hover {
-    background-color: #0056b3;
+    background-color: #2d4373;
 }
 
 .pdf-controls {
@@ -125,12 +152,13 @@
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     z-index: 1000;
     height: 48px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .pdf-controls button {
     padding: 6px 12px;
     background-color: #fff;
-    color: #2c2c2c;
+    color: #333333;
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     cursor: pointer;
@@ -141,10 +169,11 @@
     gap: 6px;
     transition: all 0.2s ease;
     height: 32px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .pdf-controls button:hover:not(:disabled) {
-    background-color: #f5f5f5;
+    background-color: #f0f2f5;
     border-color: #d0d0d0;
 }
 
@@ -161,6 +190,8 @@
     padding: 0 8px;
     min-width: 100px;
     text-align: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 500;
 }
 
 .zoom-controls {
@@ -172,6 +203,7 @@
     border-radius: 6px;
     border: 1px solid #e0e0e0;
     height: 32px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .zoom-controls button {
@@ -192,6 +224,7 @@
     font-size: 13px;
     color: #333;
     cursor: pointer;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .pdf-controls .material-icons {
@@ -206,18 +239,19 @@
     background: #f8f9fa;
     padding: 4px;
     border-radius: 6px;
-    border: 1px solid #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Back to library button special styling */
 .back-button {
-    background-color: #1976d2 !important;
+    background-color: #3a5998 !important;
     color: white !important;
     border: none !important;
+    font-weight: 600;
 }
 
 .back-button:hover {
-    background-color: #1565c0 !important;
+    background-color: #304d8a !important;
 }
 
 /* Add styles for selection in progress */
@@ -232,7 +266,7 @@
 /* Add these styles back */
 .pdf-page-container {
     background-color: white;
-    box-shadow: 
+    box-shadow:
         -1px 0 2px rgba(0,0,0,0.1),
         0 2px 5px rgba(0,0,0,0.1);
     position: relative;
@@ -259,6 +293,7 @@
     -moz-user-select: text;
     -ms-user-select: text;
     transform-origin: 0 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .pdf-line {
@@ -272,10 +307,11 @@
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .pdf-line:hover {
-    background-color: rgba(0, 0, 255, 0.05);
+    background-color: rgba(58, 89, 152, 0.05);
 }
 
 .pdf-text-item {
@@ -289,20 +325,17 @@
     -ms-user-select: text;
     padding: 0;
     margin: 0;
-    line-height: 1;
-    white-space: pre;
-    pointer-events: all;
-    background: transparent;
-    mix-blend-mode: multiply;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Highlight styles */
 .highlight {
     position: absolute;
-    background-color: rgba(255, 255, 0, 0.3);
+    background-color: rgba(58, 89, 152, 0.2);
     mix-blend-mode: multiply;
     pointer-events: all;
     cursor: help;
+    border-radius: 2px;
 }
 
 .highlight-layer {
@@ -313,6 +346,7 @@
     bottom: 0;
     overflow: hidden;
     pointer-events: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .loading {
@@ -321,23 +355,28 @@
     align-items: center;
     height: 100%;
     font-size: 1.2em;
-    color: #666;
+    color: #3a5998;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 600;
 }
 
 /* Add these page transition styles */
 .page-exit {
     opacity: 0;
-    transform: rotateY(-20deg);
+    transform: scale(0.95) translateX(-20px);
+    transition: all 0.2s ease-out;
 }
 
 .page-enter {
     opacity: 0;
-    transform: rotateY(20deg);
+    transform: scale(0.95) translateX(20px);
+    transition: all 0.2s ease-in;
 }
 
 .page-current {
     opacity: 1;
-    transform: rotateY(0);
+    transform: scale(1) translateX(0);
+    transition: all 0.2s ease;
 }
 
 /* Add page fold effect */
@@ -353,7 +392,7 @@
 
 .page-exit::after {
     right: 0;
-    background: linear-gradient(to left, 
+    background: linear-gradient(to left,
         rgba(0,0,0,0.1) 0%,
         rgba(0,0,0,0.05) 50%,
         transparent 100%);
@@ -361,7 +400,7 @@
 
 .page-enter::after {
     left: 0;
-    background: linear-gradient(to right, 
+    background: linear-gradient(to right,
         rgba(0,0,0,0.1) 0%,
         rgba(0,0,0,0.05) 50%,
         transparent 100%);
@@ -373,6 +412,8 @@
     perspective: 1000px;
     margin-left: 40px;
     filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));
+    transition: transform 0.3s ease;
+    margin: 0 auto; /* Center content */
 }
 
 /* Simplified book binding effect */
@@ -390,7 +431,7 @@
         #ffffff 100%
     );
     border-radius: 4px 0 0 4px;
-    box-shadow: 
+    box-shadow:
         inset -8px 0 15px -8px rgba(0,0,0,0.4),
         inset 0 -1px 2px rgba(0,0,0,0.1),
         inset 0 1px 2px rgba(0,0,0,0.1);
@@ -427,4 +468,12 @@
     );
     pointer-events: none;
     z-index: -1;
-} 
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transition: all 0.3s ease;
+    overflow: hidden; /* Prevent content overflow during transition */
+}

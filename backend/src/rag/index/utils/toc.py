@@ -25,6 +25,47 @@ class TableOfContent(BaseModel):
     chapter_topics: List[str]
 
 
+# Helper function to extract table of contents using PyMuPDF directly
+def extract_toc_using_pymupdf(doc, total_pages):
+    """
+    Extract table of contents from PDF using PyMuPDF's get_toc() method as a fallback.
+    
+    Args:
+        doc: The fitz.Document object
+        total_pages: Total number of pages in the document
+        
+    Returns:
+        List[TableOfContent]: List of chapters with their details
+    """
+    toc_entries = doc.get_toc()
+    if not toc_entries:
+        return []
+        
+    chapters = []
+    for i, entry in enumerate(toc_entries):
+        # PyMuPDF ToC entries are in the format: [level, title, page, ...]
+        level, title, page = entry[:3]
+        
+        # Only include top-level entries (usually chapters)
+        if level > 1:
+            continue
+            
+        # Calculate end page (either the start of the next chapter or the document end)
+        end_page = total_pages
+        for next_entry in toc_entries[i+1:]:
+            if next_entry[0] <= level:  # Same or higher level (lower number)
+                end_page = next_entry[2] - 1
+                break
+                
+        chapters.append(TableOfContent(
+            chapter_number=i+1,  # Use the index+1 as chapter number
+            chapter_name=title,
+            start_page=page,
+            end_page=end_page,
+            chapter_topics=[]  # No topics available from PyMuPDF ToC
+        ))
+        
+    return chapters
 
 # Step 1: Function to extract pages after finding a term
 def extract_pages_after_term(doc, terms, num_pages=20):
@@ -148,10 +189,48 @@ def parse_table_of_contents(pdf_id: str, db: Session = None) -> List[TableOfCont
             except (ValueError, TypeError) as e:
                 print(f"Error processing chapter: {e}")
                 continue
+                
+        # If validated_chapters is empty, try to extract the ToC using PyMuPDF's get_toc method
+        if not validated_chapters:
+            logger.info(f"LLM-based ToC extraction failed for PDF {pdf_id}, trying PyMuPDF fallback")
+            validated_chapters = extract_toc_using_pymupdf(doc, pdf.total_pages)
+            
+            if validated_chapters:
+                # Convert to the expected format and save to the database
+                chapters_data = [chapter.dict() for chapter in validated_chapters]
+                toc_data = json.dumps({"chapters": chapters_data})
+                pdf.table_of_contents = toc_data
+                db.commit()
+                db.refresh(pdf)
+                logger.info(f"Successfully extracted ToC using PyMuPDF for PDF {pdf_id}")
+            else:
+                logger.warning(f"Failed to extract ToC using PyMuPDF for PDF {pdf_id}")
+                
+        doc.close()
         return validated_chapters
         
     except Exception as e:
-        print(f"Error parsing chapter information: {e}")
-        return []
+        logger.error(f"Error parsing chapter information: {e}")
+        
+        # Try the fallback method when an exception occurs
+        try:
+            logger.info(f"Attempting PyMuPDF fallback due to error: {e}")
+            doc = fitz.open(pdf_path)
+            validated_chapters = extract_toc_using_pymupdf(doc, pdf.total_pages)
+            
+            if validated_chapters:
+                # Convert to the expected format and save to the database
+                chapters_data = [chapter.dict() for chapter in validated_chapters]
+                toc_data = json.dumps({"chapters": chapters_data})
+                pdf.table_of_contents = toc_data
+                db.commit()
+                db.refresh(pdf)
+                logger.info(f"Successfully extracted ToC using PyMuPDF fallback for PDF {pdf_id}")
+            
+            doc.close()
+            return validated_chapters
+        except Exception as fallback_error:
+            logger.error(f"Fallback ToC extraction also failed: {fallback_error}")
+            return []
 
 

@@ -30,6 +30,7 @@ Base.metadata.create_all(bind=engine)
 app_root = os.path.dirname(os.path.abspath(__file__))
 instance_path = os.path.join(os.path.dirname(app_root), "instance")
 uploads_path = os.path.join(os.path.dirname(app_root), "uploads")
+# Use the src/thumbnails directory where thumbnails are actually stored
 thumbnails_path = os.path.join(os.path.dirname(app_root), "thumbnails")
 
 # Ensure directories exist

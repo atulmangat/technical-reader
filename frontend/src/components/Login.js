@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 import '../css/Login.css';
 
 export function Login() {
@@ -11,42 +12,60 @@ export function Login() {
         username: ''
     });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, register, googleLogin } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
 
         try {
-            const endpoint = isLogin ? '/auth/login' : '/auth/register';
-            const response = await fetch(`http://localhost:5000${endpoint}`, {
-                method: 'POST',
-                credentials: 'include',  // Important for cookies
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Authentication failed');
-            }
-
             if (isLogin) {
-                // Call the login function from AuthContext
-                login(data);
-                // Navigate to home page
-                navigate('/', { replace: true });
+                // Login
+                const { email, password } = formData;
+                const result = await login({ email, password });
+                
+                if (result.success) {
+                    // Navigate to home page
+                    navigate('/', { replace: true });
+                } else {
+                    setError(result.error);
+                }
             } else {
-                setIsLogin(true);
-                setFormData(prev => ({ ...prev, username: '' }));
-                setError('Registration successful! Please login.');
+                // Register
+                const result = await register(formData);
+                
+                if (result.success) {
+                    // Auto login after successful registration
+                    try {
+                        const { email, password } = formData;
+                        const loginResult = await login({ email, password });
+                        
+                        if (loginResult.success) {
+                            // Navigate to home page
+                            navigate('/', { replace: true });
+                        } else {
+                            setIsLogin(true);
+                            setFormData(prev => ({ ...prev, username: '' }));
+                            setError('Registration successful! Please login manually: ' + loginResult.error);
+                        }
+                    } catch (loginErr) {
+                        console.error('Auto-login error:', loginErr);
+                        setIsLogin(true);
+                        setFormData(prev => ({ ...prev, username: '' }));
+                        setError('Registration successful! Please login manually.');
+                    }
+                } else {
+                    setError(result.error);
+                }
             }
         } catch (err) {
-            setError(err.message);
+            console.error('Form submission error:', err);
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -55,6 +74,31 @@ export function Login() {
             ...prev,
             [e.target.name]: e.target.value
         }));
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setError('');
+        setLoading(true);
+        
+        try {
+            const result = await googleLogin(credentialResponse.credential);
+            
+            if (result.success) {
+                // Navigate to home page
+                navigate('/', { replace: true });
+            } else {
+                setError(result.error);
+            }
+        } catch (err) {
+            console.error('Google login error:', err);
+            setError(err.message || 'An error occurred during Google login');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const handleGoogleError = () => {
+        setError('Google login failed. Please try again or use email login.');
     };
 
     return (
@@ -95,15 +139,40 @@ export function Login() {
                             required
                         />
                     </div>
-                    <button type="submit" className="submit-button">
-                        {isLogin ? 'Login' : 'Register'}
+                    <button 
+                        type="submit" 
+                        className="submit-button"
+                        disabled={loading}
+                    >
+                        {loading 
+                            ? (isLogin ? 'Logging in...' : 'Registering...') 
+                            : (isLogin ? 'Login' : 'Register')
+                        }
                     </button>
                 </form>
+                
+                <div className="social-login">
+                    <p>Or {isLogin ? 'login' : 'register'} with:</p>
+                    <div className="google-login-container">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
+                            useOneTap
+                            theme="filled_blue"
+                            text={isLogin ? "signin_with" : "signup_with"}
+                            shape="rectangular"
+                            logo_alignment="center"
+                            width="280"
+                        />
+                    </div>
+                </div>
+                
                 <p className="toggle-form">
                     {isLogin ? "Don't have an account? " : "Already have an account? "}
-                    <button 
+                    <button
                         className="toggle-button"
                         onClick={() => setIsLogin(!isLogin)}
+                        disabled={loading}
                     >
                         {isLogin ? 'Register' : 'Login'}
                     </button>
@@ -111,4 +180,4 @@ export function Login() {
             </div>
         </div>
     );
-} 
+}

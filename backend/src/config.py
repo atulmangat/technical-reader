@@ -15,6 +15,7 @@ class EmbeddingConfig(BaseModel):
     qdrant_port: int = 6333
     qdrant_collection_name: str = "document_embeddings"
     embedding_provider: str = "gemini"
+    num_threads: int = 4
 
 
 class LLMConfig(BaseModel):

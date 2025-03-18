@@ -103,7 +103,7 @@ class VectorDB:
             return {"status": "error", "message": str(e)}
 
     def search_embeddings(
-        self, pdf_id: int, query_embedding: List[float], top_k: int = 5
+        self, pdf_id: int, query_embedding: List[float], top_k: int = 40
     ) -> Dict[str, Any]:
         """
         Search for similar embeddings
@@ -143,11 +143,9 @@ class VectorDB:
                 formatted_results.append(
                     {
                         "text": result.payload["text"],
-                        "metadata": {"pdf_id": result.payload["pdf_id"]},
                         "similarity": result.score,
                     }
                 )
-
             return {"status": "success", "results": formatted_results}
 
         except Exception as e:

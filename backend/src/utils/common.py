@@ -7,7 +7,7 @@ def generate_pdf_thumbnail(pdf_file):
     try:
         # Create thumbnails directory if it doesn't exist
         thumbnails_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "thumbnails"
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "thumbnails"
         )
         os.makedirs(thumbnails_dir, exist_ok=True)
 

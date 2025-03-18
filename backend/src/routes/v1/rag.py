@@ -8,6 +8,7 @@ from ...models.pdf import PDF
 from ...rag.utils.tools import run_with_tools, generate_no_tools_prompt
 from ...rag.llms.client import stream_llm
 from ...rag.index.store.embeddings import get_vector_db, VectorDB
+from ...rag.tools.content import get_page_content
 from ...utils.auth import get_current_user
 from ...models.user import User
 import logging
@@ -20,10 +21,12 @@ logger = logging.getLogger(__name__)
 class ChatRequest(BaseModel):
     """Chat request model"""
     query: str
-    model: str = "gemini-2.0-flash"  # Default to mistral
+    model: str = "mistral"  # Default to mistral
     use_tools: bool = True  # Flag to determine whether to use tools
+    detailed_response: bool = False  # Flag to determine whether to provide detailed responses
     context: list[str] = []
     conversation_history: List[Dict[str, str]] = []
+    current_page: int = None  # Current page number in the PDF
 
 
 
@@ -58,7 +61,19 @@ async def chat(
             raise HTTPException(status_code=404, detail=f"PDF with ID {pdf_id} not found or you don't have access to it")
         
         # Get context from the PDF
-        context = f"PDF: {pdf.title}\nFilename: {pdf.filename}\nID: {pdf.id}" + "\n\n" + "\n\n".join(request.context)   
+        context = f"PDF: {pdf.title}\nFilename: {pdf.filename}\nID: {pdf.id}" + "\n\n" + "\n\n".join(request.context)
+        
+        # Add surrounding page context if current_page is provided
+        if request.current_page is not None:
+            # Get content from current, previous, and next pages
+            try:        
+                # Use get_page_content to retrieve the page content
+                page_content = get_page_content(pdf_id, [request.current_page], surrounding_pages=2, db=db)
+                if page_content:
+                    context += "\n\n" + "\n\n".join(page_content)
+            except Exception as e:
+                # Log the error but continue without the page context
+                logger.error(f"Error retrieving page context: {str(e)}")
         
         async def stream_response() -> AsyncGenerator[bytes, None]:
             if request.use_tools:                
@@ -69,7 +84,8 @@ async def chat(
                     context=context,
                     conversation_history=request.conversation_history,
                     db=db,
-                    vector_db=vector_db
+                    vector_db=vector_db,
+                    detailed_response=request.detailed_response
                 )
                 
                 # Stream the response
@@ -86,9 +102,10 @@ async def chat(
                 prompt = generate_no_tools_prompt(
                     user_query=request.query,
                     context=context,
-                    conversation_history=request.conversation_history
+                    conversation_history=request.conversation_history,
+                    detailed_response=request.detailed_response
                 )                
-                async for chunk in stream_llm(prompt=prompt):
+                async for chunk in stream_llm(prompt=prompt, llm_type=request.model):
                     if chunk.startswith("data:"):
                         # If the chunk is already formatted as SSE data, just encode it
                         yield chunk.encode()

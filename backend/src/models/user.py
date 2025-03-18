@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -16,6 +16,10 @@ class User(Base):
     username = Column(String(80), unique=True, nullable=False)
     password_hash = Column(String(128))
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Google OAuth fields
+    google_id = Column(String(120), unique=True, nullable=True)
+    is_google_account = Column(Boolean, default=False)
 
     # Relationships
     pdfs = relationship("PDF", backref="owner", lazy="selectin")

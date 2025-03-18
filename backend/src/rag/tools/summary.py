@@ -339,8 +339,6 @@ def get_key_sentences_for_summary(
     formatted_text = "Key points from the document:\n\n"
     for sentence in sentences:
         formatted_text += f"• {sentence}\n\n"
-
-    print(f"Formatted text: {formatted_text}")
     
     return formatted_text
 

@@ -6,6 +6,8 @@ import { PdfIndex } from './PdfIndex';
 import { ResizablePanel } from './ResizablePanel';
 import { ChatWindow } from './ChatWindow';
 import { HighlightsPanel } from './HighlightsPanel';
+import { Navbar } from './Navbar';
+import { pdfAPI, highlightsAPI } from '../services/api';
 
 // Set worker path correctly
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -27,8 +29,8 @@ export function PdfViewer() {
     const [hoveredElement, setHoveredElement] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [highlights, setHighlights] = useState([]);
-    const [indexWidth, setIndexWidth] = useState(250);
-    const [chatWidth, setChatWidth] = useState(300);
+    const [indexWidth, setIndexWidth] = useState(48);
+    const [chatWidth, setChatWidth] = useState(600);
     const [selectedText, setSelectedText] = useState('');
     const [currentSelection, setCurrentSelection] = useState(null);
     const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
@@ -38,25 +40,28 @@ export function PdfViewer() {
     const [transitionDirection, setTransitionDirection] = useState('next');
     const [scrollPosition, setScrollPosition] = useState(null);
     const [selectedColor, setSelectedColor] = useState('#ffeb3b');
+    const [tocCollapsed, setTocCollapsed] = useState(true);
+    const [previousIndexWidth, setPreviousIndexWidth] = useState(300);
+    const [previousChatWidth, setPreviousChatWidth] = useState(500);
 
     // First, define handlePageChange
     const handlePageChange = useCallback((newPage, scrollTo = null) => {
         const direction = newPage > currentPage ? 'next' : 'prev';
         setTransitionDirection(direction);
-        
+
         // Start exit animation
         setPageTransition('page-exit');
-        
+
         // After small delay, change page and start enter animation
         setTimeout(() => {
             setCurrentPage(newPage);
             setPageTransition('page-enter');
-            
+
             // Set scroll position if provided
             if (scrollTo) {
                 setScrollPosition(scrollTo);
             }
-            
+
             // After enter animation starts, move to current state
             setTimeout(() => {
                 setPageTransition('page-current');
@@ -75,7 +80,7 @@ export function PdfViewer() {
     // Memoize the renderHighlights function
     const renderHighlights = useCallback((highlights, viewport) => {
         if (!viewerRef.current) return;
-        
+
         const container = viewerRef.current.parentElement;
         const existingHighlights = container.querySelector('.highlight-layer');
         if (existingHighlights) {
@@ -125,13 +130,16 @@ export function PdfViewer() {
             try {
                 setIsLoading(true);
                 setError(null);
+
+                const response = await pdfAPI.getPdf(id);
                 
-                const response = await fetch(`http://localhost:5000/api/pdfs/${id}`);
-                if (!response.ok) throw new Error('Failed to load PDF');
-                
-                const blob = await response.blob();
+                if (!response) {
+                    throw new Error('Failed to load PDF');
+                }
+
+                const blob = await response.data;
                 const pdfUrl = URL.createObjectURL(blob);
-                
+
                 const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
                 const pdfDoc = await loadingTask.promise;
                 setPdf(pdfDoc);
@@ -139,6 +147,9 @@ export function PdfViewer() {
             } catch (err) {
                 console.error('Error loading PDF:', err);
                 setError(`Error loading PDF: ${err.message}`);
+                if (err.response?.status === 401) {
+                    navigate('/login');
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -147,11 +158,11 @@ export function PdfViewer() {
         if (id) {
             loadPdf();
         }
-    }, [id]);
+    }, [id, navigate]);
 
     useEffect(() => {
         if (!pdf || !viewerRef.current || !textLayerRef.current) return;
-        
+
         let isMounted = true;
         let renderTask = null;
 
@@ -203,7 +214,7 @@ export function PdfViewer() {
 
                 // Get text content
                 const textContent = await page.getTextContent();
-                
+
                 // Clear text layer
                 if (textLayer && isMounted) {
                     textLayer.innerHTML = '';
@@ -241,7 +252,7 @@ export function PdfViewer() {
                         const div = document.createElement('div');
                         div.className = 'pdf-text-item';
                         div.textContent = item.str;
-                        
+
                         Object.assign(div.style, {
                             left: `${x}px`,
                             fontSize: `${fontSize}px`,
@@ -300,7 +311,7 @@ export function PdfViewer() {
             if (textItem) {
                 // Clear any existing selection
                 window.getSelection().removeAllRanges();
-                
+
                 setSelectionStart({
                     element: textItem,
                     x: e.clientX,
@@ -313,21 +324,21 @@ export function PdfViewer() {
     const handleMouseUp = (e) => {
         const selection = window.getSelection();
         const text = selection.toString().trim();
-        
+
         if (text.length > 0 && selectionStart) {
             const isTextLayerSelection = e.target.closest('.text-layer');
             if (isTextLayerSelection) {
                 const range = selection.getRangeAt(0);
                 const textLayerRect = textLayerRef.current.getBoundingClientRect();
                 const endElement = e.target.closest('.pdf-text-item');
-                
+
                 if (endElement && selectionStart.element) {
                     const startRect = selectionStart.element.getBoundingClientRect();
                     const endRect = endElement.getBoundingClientRect();
-                    
-                    const isBackward = (startRect.top > endRect.top) || 
+
+                    const isBackward = (startRect.top > endRect.top) ||
                                      (startRect.top === endRect.top && startRect.left > endRect.left);
-                    
+
                     const actualStartElement = isBackward ? endElement : selectionStart.element;
                     const actualEndElement = isBackward ? selectionStart.element : endElement;
                     const actualStartRect = isBackward ? endRect : startRect;
@@ -361,17 +372,17 @@ export function PdfViewer() {
             if (!textLayer) return;
 
             const currentElement = e.target.closest('.pdf-text-item');
-            
+
             // Don't update selection if we're not over a text element
             if (!currentElement) return;
 
             const selection = window.getSelection();
-            
+
             // Get all text elements between start and current
             const allTextElements = Array.from(textLayer.querySelectorAll('.pdf-text-item'));
             const startIndex = allTextElements.indexOf(selectionStart.element);
             const currentIndex = allTextElements.indexOf(currentElement);
-            
+
             if (startIndex === -1 || currentIndex === -1) return;
 
             const isForward = startIndex <= currentIndex;
@@ -379,11 +390,11 @@ export function PdfViewer() {
 
             if (isForward) {
                 range.setStart(selectionStart.element.firstChild || selectionStart.element, 0);
-                range.setEnd(currentElement.firstChild || currentElement, 
+                range.setEnd(currentElement.firstChild || currentElement,
                     (currentElement.firstChild || currentElement).length);
             } else {
                 range.setStart(currentElement.firstChild || currentElement, 0);
-                range.setEnd(selectionStart.element.firstChild || selectionStart.element, 
+                range.setEnd(selectionStart.element.firstChild || selectionStart.element,
                     (selectionStart.element.firstChild || selectionStart.element).length);
             }
 
@@ -469,19 +480,19 @@ export function PdfViewer() {
     useEffect(() => {
         const loadHighlights = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/pdfs/${id}/highlights`, {
-                    credentials: 'include'
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setHighlights(data);
+                const response = await highlightsAPI.getHighlightsByPdf(id);
+                
+                if (response.status === 200) {
+                    setHighlights(response.data);
                 }
             } catch (error) {
                 console.error('Error loading highlights:', error);
             }
         };
-        
-        loadHighlights();
+
+        if (id) {
+            loadHighlights();
+        }
     }, [id]);
 
     const handleTextSelection = async () => {
@@ -511,159 +522,187 @@ export function PdfViewer() {
         };
 
         try {
-            const response = await fetch(`http://localhost:5000/api/pdfs/${id}/highlights`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(highlight)
-            });
+            const response = await highlightsAPI.createHighlight(id, highlight);
 
-            if (response.ok) {
-                const savedHighlight = await response.json();
-                setHighlights(prev => [...prev, savedHighlight]);
+            if (response.status === 201) {
+                setHighlights(prev => [...prev, response.data]);
             }
         } catch (error) {
             console.error('Error saving highlight:', error);
         }
     };
 
+    // Add this effect to handle TOC collapse state changes
+    useEffect(() => {
+        const handleTocStateChange = (e) => {
+            if (e.detail && e.detail.isExpanded !== undefined) {
+                const newCollapsedState = !e.detail.isExpanded;
+                
+                // If state is changing (not just re-rendering with same state)
+                if (newCollapsedState !== tocCollapsed) {
+                    if (newCollapsedState) {
+                        // When COLLAPSING
+                        // Save current widths for later restoration
+                        const currentIndexWidth = indexWidth;
+                        const currentChatWidth = chatWidth;
+                        
+                        setPreviousIndexWidth(currentIndexWidth);
+                        setPreviousChatWidth(currentChatWidth);
+                        
+                        // Set TOC width to minimum
+                        setIndexWidth(48);
+                        
+                        // Increase chat window width
+                        const extraSpace = currentIndexWidth - 48; // Space freed up by TOC
+                        const newChatWidth = Math.min(currentChatWidth + (extraSpace / 3), 600); // Some extra to chat
+                        setChatWidth(newChatWidth);
+                    } else {
+                        // When EXPANDING
+                        // Restore previous widths
+                        setIndexWidth(previousIndexWidth);
+                        setChatWidth(previousChatWidth);
+                    }
+                    
+                    setTocCollapsed(newCollapsedState);
+                }
+            }
+        };
+        
+        window.addEventListener('tocStateChanged', handleTocStateChange);
+        return () => {
+            window.removeEventListener('tocStateChanged', handleTocStateChange);
+        };
+    }, [tocCollapsed, indexWidth, previousIndexWidth, chatWidth, previousChatWidth]);
+
     return (
-        <div className="pdf-viewer-container">
-            <div className="pdf-controls">
-                <button className="back-button" onClick={() => navigate('/')}>
-                    <span className="material-icons">arrow_back</span>
-                    Back to Library
-                </button>
-
-                <div className="zoom-controls">
-                    <button onClick={() => handleZoom(-1)} disabled={zoomIndex === 0}>
-                        <span className="material-icons">remove</span>
+        <div className="pdf-viewer-page">
+            <div className="pdf-viewer-container">
+                <div className="pdf-controls">
+                    <button className="back-button" onClick={() => navigate('/')}>
+                        <span className="material-icons">arrow_back</span>
+                        Back to Library
                     </button>
-                    <select 
-                        value={ZOOM_LEVELS[zoomIndex]}
-                        onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
-                        className="zoom-select"
+
+                    <div className="zoom-controls">
+                        <button onClick={() => handleZoom(-1)} disabled={zoomIndex === 0}>
+                            <span className="material-icons">remove</span>
+                        </button>
+                        <select
+                            value={ZOOM_LEVELS[zoomIndex]}
+                            onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                            className="zoom-select"
+                        >
+                            {ZOOM_LEVELS.map(level => (
+                                <option key={level} value={level}>
+                                    {Math.round(level * 100)}%
+                                </option>
+                            ))}
+                        </select>
+                        <button onClick={() => handleZoom(1)} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>
+                            <span className="material-icons">add</span>
+                        </button>
+                    </div>
+
+                    <div className="navigation-group">
+                        <button onClick={() => changePage(-1)} disabled={currentPage <= 1}>
+                            <span className="material-icons">navigate_before</span>
+                            Previous
+                        </button>
+                        <div className="page-info">
+                            Page {currentPage} of {totalPages}
+                        </div>
+                        <button onClick={() => changePage(1)} disabled={currentPage >= totalPages}>
+                            Next
+                            <span className="material-icons">navigate_next</span>
+                        </button>
+                    </div>
+                </div>
+                <div
+                    className={`pdf-content ${tocCollapsed ? 'toc-collapsed' : ''}`}
+                    onWheel={handleWheel}
+                >
+                    <ResizablePanel
+                        width={tocCollapsed ? 48 : indexWidth}
+                        minWidth={tocCollapsed ? 48 : 100}
+                        maxWidth={tocCollapsed ? 48 : 400}
+                        onResize={(width) => {
+                            // Only allow resizing when TOC is expanded
+                            if (!tocCollapsed) {
+                                setIndexWidth(width);
+                                // When resizing the index width, also update previous width
+                                // This ensures we restore to the new width when expanded again
+                                setPreviousIndexWidth(width);
+                            }
+                        }}
+                        position="left"
                     >
-                        {ZOOM_LEVELS.map(level => (
-                            <option key={level} value={level}>
-                                {Math.round(level * 100)}%
-                            </option>
-                        ))}
-                    </select>
-                    <button onClick={() => handleZoom(1)} disabled={zoomIndex === ZOOM_LEVELS.length - 1}>
-                        <span className="material-icons">add</span>
-                    </button>
-                </div>
+                        <PdfIndex
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageSelect={handlePageChange}
+                            pdf={pdf}
+                            onToggle={(isExpanded) => {
+                                // Update tocCollapsed state
+                                setTocCollapsed(!isExpanded);
+                                // Dispatch custom event to notify about TOC state change
+                                window.dispatchEvent(new CustomEvent('tocStateChanged', { 
+                                    detail: { isExpanded } 
+                                }));
+                            }}
+                        />
+                    </ResizablePanel>
 
-                <div className="navigation-group">
-                    <button onClick={() => changePage(-1)} disabled={currentPage <= 1}>
-                        <span className="material-icons">navigate_before</span>
-                        Previous
-                    </button>
-                    <div className="page-info">
-                        Page {currentPage} of {totalPages}
-                    </div>
-                    <button onClick={() => changePage(1)} disabled={currentPage >= totalPages}>
-                        Next
-                        <span className="material-icons">navigate_next</span>
-                    </button>
-                </div>
-            </div>
-            <div 
-                className="pdf-content"
-                onWheel={handleWheel}
-            >
-                <ResizablePanel
-                    width={indexWidth}
-                    minWidth={200}
-                    maxWidth={400}
-                    onResize={setIndexWidth}
-                    position="left"
-                >
-                    <PdfIndex
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageSelect={handlePageChange}
-                        pdf={pdf}
-                    />
-                </ResizablePanel>
-
-                <div className="pdf-viewer" 
-                    onMouseUp={handleMouseUp} 
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                >
-                    {isLoading ? (
-                        <div className="loading">Loading PDF...</div>
-                    ) : error ? (
-                        <div className="error-message">{error}</div>
-                    ) : (
-                        <div className="page-transition-wrapper">
-                            <div className={`pdf-page-container ${pageTransition}`}
-                                 style={{
-                                     transformOrigin: transitionDirection === 'next' ? 'left center' : 'right center'
-                                 }}
-                            >
-                                <canvas ref={viewerRef} />
-                                <div 
-                                    ref={textLayerRef} 
-                                    className={`text-layer ${hoveredElement !== null ? 'hovering' : ''}`}
-                                    data-hovered-paragraph={hoveredElement}
-                                />
+                    <div className="pdf-viewer"
+                        onMouseUp={handleMouseUp}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                    >
+                        {isLoading ? (
+                            <div className="loading">Loading PDF...</div>
+                        ) : error ? (
+                            <div className="error-message">{error}</div>
+                        ) : (
+                            <div className="page-transition-wrapper">
+                                <div className={`pdf-page-container ${pageTransition}`}
+                                     style={{
+                                         transformOrigin: transitionDirection === 'next' ? 'left center' : 'right center'
+                                     }}
+                                >
+                                    <canvas ref={viewerRef} />
+                                    <div
+                                        ref={textLayerRef}
+                                        className={`text-layer ${hoveredElement !== null ? 'hovering' : ''}`}
+                                        data-hovered-paragraph={hoveredElement}
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </div>
-
-                <ResizablePanel
-                    width={chatWidth}
-                    minWidth={250}
-                    maxWidth={500}
-                    onResize={setChatWidth}
-                    position="right"
-                >
-                    <div className="right-panel">
-                        <div className="highlight-tools">
-                            <input
-                                type="color"
-                                value={selectedColor}
-                                onChange={(e) => setSelectedColor(e.target.value)}
-                            />
-                            <button onClick={handleTextSelection}>Highlight Selection</button>
-                        </div>
-                        <HighlightsPanel
-                            highlights={highlights}
-                            onHighlightClick={(highlight) => {
-                                // Scroll to highlight
-                                const pageElement = document.querySelector(
-                                    `.pdf-page[data-page-number="${highlight.page_number}"]`
-                                );
-                                if (pageElement) {
-                                    pageElement.scrollIntoView({ behavior: 'smooth' });
-                                }
-                            }}
-                            onDeleteHighlight={async (index) => {
-                                try {
-                                    await fetch(`http://localhost:5000/api/pdfs/${id}/highlights/${index}`, {
-                                        method: 'DELETE',
-                                        credentials: 'include'
-                                    });
-                                    setHighlights(prev => prev.filter((_, i) => i !== index));
-                                } catch (error) {
-                                    console.error('Error deleting highlight:', error);
-                                }
-                            }}
-                        />
-                        <ChatWindow
-                            initialContext={selectedText}
-                            onAddNote={handleAddNote}
-                            currentSelection={currentSelection}
-                        />
+                        )}
                     </div>
-                </ResizablePanel>
+
+                    <ResizablePanel
+                        width={chatWidth}
+                        minWidth={250}
+                        maxWidth={tocCollapsed ? 700 : 600} /* Allow more width when TOC is collapsed */
+                        onResize={(width) => {
+                            setChatWidth(width);
+                            // When manually resizing, also update previous width
+                            // This ensures we restore to the new width when TOC is expanded
+                            setPreviousChatWidth(width);
+                        }}
+                        position="right"
+                    >
+                        <div className="right-panel">
+                            <ChatWindow
+                                initialContext={selectedText}
+                                onAddNote={handleAddNote}
+                                currentSelection={currentSelection}
+                                pdfId={id}
+                                currentPage={currentPage}
+                            />
+                        </div>
+                    </ResizablePanel>
+                </div>
             </div>
         </div>
     );
-} 
+}

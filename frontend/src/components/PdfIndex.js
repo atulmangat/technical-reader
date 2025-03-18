@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import '../css/PdfIndex.css';
 
-export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
+export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf, onToggle }) {
     const [outline, setOutline] = useState([]);
     const [expandedItems, setExpandedItems] = useState(new Set());
     const [activeItem, setActiveItem] = useState(null);
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    useEffect(() => {
+        if (onToggle) {
+            onToggle(isExpanded);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);  // Empty dependency array ensures this runs only once on mount
 
     useEffect(() => {
         const loadOutline = async () => {
@@ -37,6 +45,15 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
         });
     };
 
+    const toggleTocExpanded = () => {
+        const newExpandedState = !isExpanded;
+        setIsExpanded(newExpandedState);
+        
+        if (onToggle) {
+            onToggle(newExpandedState);
+        }
+    };
+
     const handleItemClick = async (item, itemId) => {
         try {
             if (item.dest) {
@@ -47,11 +64,11 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
                     const pageRef = destination[0];
                     // Get the page number
                     const pageNumber = await pdf.getPageIndex(pageRef) + 1;
-                    
+
                     // Get the page
                     const page = await pdf.getPage(pageNumber);
                     const viewport = page.getViewport({ scale: 1.0 });
-                    
+
                     // Parse the destination array to get the y coordinate
                     // destination[3] contains the y coordinate in PDF user space
                     let yCoordinate = destination[3];
@@ -66,7 +83,7 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
                         x: 0,
                         y: yCoordinate
                     });
-                    
+
                     setActiveItem(itemId);
                 }
             } else if (item.url) {
@@ -86,12 +103,12 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
 
         return (
             <div key={itemId} className="outline-item-container">
-                <div 
+                <div
                     className={`outline-item ${isActive ? 'active' : ''}`}
                     style={{ paddingLeft: `${level * 16}px` }}
                 >
                     {hasChildren && (
-                        <button 
+                        <button
                             className={`expand-button ${isExpanded ? 'expanded' : ''}`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -103,7 +120,7 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
                             </span>
                         </button>
                     )}
-                    <span 
+                    <span
                         className="outline-title"
                         onClick={() => handleItemClick(item, itemId)}
                         title={item.title}
@@ -113,7 +130,7 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
                 </div>
                 {hasChildren && isExpanded && (
                     <div className="outline-children">
-                        {item.items.map((child, childIndex) => 
+                        {item.items.map((child, childIndex) =>
                             renderOutlineItem(child, level + 1, childIndex)
                         )}
                     </div>
@@ -123,19 +140,36 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf }) {
     };
 
     return (
-        <div className="pdf-index">
+        <div className={`pdf-index ${isExpanded ? 'expanded' : 'collapsed'}`}>
             <div className="index-header">
-                <h2>Table of Contents</h2>
+                <h2>Document Contents</h2>
+                <button 
+                    className="toggle-toc-button" 
+                    onClick={toggleTocExpanded}
+                    title={isExpanded ? "Collapse table of contents" : "Expand table of contents"}
+                >
+                    <span className="material-icons">
+                        {isExpanded ? 'chevron_left' : 'chevron_right'}
+                    </span>
+                </button>
             </div>
-            <div className="outline-container">
+            {!isExpanded && (
+                <>
+                    <div className="collapsed-toc-icon">
+                        <span className="material-icons">menu_book</span>
+                    </div>
+                    <div className="vertical-toc-title">Document Contents</div>
+                </>
+            )}
+            <div className={`outline-container ${isExpanded ? 'visible' : 'hidden'}`}>
                 {outline.length > 0 ? (
                     outline.map((item, index) => renderOutlineItem(item, 0, index))
                 ) : (
                     <div className="no-outline">
-                        No table of contents available
+                        No document contents available
                     </div>
                 )}
             </div>
         </div>
     );
-} 
+}

@@ -9,11 +9,10 @@ from ..tools import get_function_descriptions, get_all_tool_interfaces
 from ..llms.prompts import (
     TOOLS_SYSTEM_PROMPT,
     INITIAL_TOOLS_USE_TEMPLATE,
-    CONTEXT_SECTION_TEMPLATE,
     INITIAL_NO_TOOLS_USE_PROMPT,
     TOOL_RESULTS_TEMPLATE,
     TOOL_RESULT_TEMPLATE,
-    CONVERSATION_HISTORY_TEMPLATE
+    format_prompt_template,
 )
 from ..llms.client import stream_llm, call_llm
 from ...models.pdf import PDF
@@ -82,22 +81,19 @@ def generate_tools_use_prompt(context: str = "", query: str = "", table_of_conte
     Args:
         context: Optional context to include in the prompt
         query: The user's query
+        table_of_contents: Optional table of contents to include
 
     Returns:
         A formatted prompt string
     """
     
     tools_prompt = TOOLS_SYSTEM_PROMPT + "\n\n" + generate_tools_prompt()
-
-    # Format the context section if provided
-    context_section = ""
-    if context:
-        context_section = CONTEXT_SECTION_TEMPLATE.format(context=context)
         
-    # Format the complete prompt
-    prompt = INITIAL_TOOLS_USE_TEMPLATE.format(
+    # Format the complete prompt using the new format_prompt_template function
+    prompt = format_prompt_template(
+        INITIAL_TOOLS_USE_TEMPLATE,
         tools_prompt=tools_prompt,
-        context_section=context_section,
+        context=context,
         query=query,
         table_of_contents=table_of_contents
     )
@@ -105,31 +101,37 @@ def generate_tools_use_prompt(context: str = "", query: str = "", table_of_conte
     return prompt
 
 
-def generate_no_tools_prompt(user_query: str, context: str = "", conversation_history: List[Dict[str, str]] = []) -> str:
+def generate_no_tools_prompt(user_query: str, context: str = "", conversation_history: List[Dict[str, str]] = [], detailed_response: bool = False) -> str:
     """
     Generate a prompt for the LLM without tools.
+    
+    Args:
+        user_query: The user's query
+        context: Optional context to include
+        conversation_history: List of previous conversation turns
+        detailed_response: Flag indicating whether to generate a detailed response
+        
+    Returns:
+        A formatted prompt string
     """
     
-    # Add conversation history to the context
-    if conversation_history and len(conversation_history) > 1:  # Skip the current query
-        history_text = ""
-        for turn in conversation_history[:-1]:  # Exclude the current query
-            if "user" in turn:
-                history_text += f"User: {turn['user']}\n"
-            if "assistant" in turn:
-                history_text += f"Assistant: {turn['assistant']}\n"
-            history_text += "\n"
+    # Add detailed response instruction if requested
+    additional_instructions = ""
+    if detailed_response:
+        additional_instructions = "Provide a detailed and comprehensive response. Include in-depth explanations, examples, and context where appropriate."
+    else:
+        additional_instructions = "Provide a concise and to-the-point response. Focus on clarity and brevity while still answering the question completely."
     
-        if history_text:
-            context = context + "\n\n" + history_text
-
-    
-    return INITIAL_NO_TOOLS_USE_PROMPT.format(
-        context_section=context,
-        query=user_query
+    # Format using the new format_prompt_template function
+    return format_prompt_template(
+        INITIAL_NO_TOOLS_USE_PROMPT,
+        context=context,
+        query=user_query,
+        conversation_history=conversation_history,
+        additional_instructions=additional_instructions
     )
     
-def generate_tool_results_prompt(user_query: str, context: str = "", tool_results: List[Dict[str, Any]] = [], conversation_history: List[Dict[str, str]] = [], table_of_contents: str = "") -> str:
+def generate_tool_results_prompt(user_query: str, context: str = "", tool_results: List[Dict[str, Any]] = [], conversation_history: List[Dict[str, str]] = [], table_of_contents: str = "", detailed_response: bool = False) -> str:
     """
     Generate a prompt for the second LLM call with tool results and conversation history.
     
@@ -138,6 +140,8 @@ def generate_tool_results_prompt(user_query: str, context: str = "", tool_result
         context: Optional context to include
         tool_results: Results from tool executions
         conversation_history: List of previous conversation turns
+        table_of_contents: Optional table of contents to include
+        detailed_response: Flag indicating whether to generate a detailed response
         
     Returns:
         A formatted prompt string
@@ -146,40 +150,30 @@ def generate_tool_results_prompt(user_query: str, context: str = "", tool_result
     formatted_results = ""
     for result in tool_results:
         formatted_result = TOOL_RESULT_TEMPLATE.format(
-            tool_name=f"{result['tool_name']}.{result['function']}",
-            parameters=json.dumps(result["parameters"]),
-            success=result["success"],
-            result=result["result"]
+            tool_name=result.get("tool", ""),
+            parameters=json.dumps(result.get("parameters", {}), indent=2),
+            success=result.get("success", False),
+            result=result.get("result", "")
         )
         formatted_results += formatted_result
     
-    # Generate the context section
-    context_section = ""
-    if context:
-        context_section = CONTEXT_SECTION_TEMPLATE.format(context=context)
-        
-    # Add conversation history to context section
-    if conversation_history and len(conversation_history) > 1:  # Skip the current query
-        history_text = ""
-        for turn in conversation_history[:-1]:  # Exclude the current query
-            if "user" in turn:
-                history_text += f"User: {turn['user']}\n"
-            if "assistant" in turn:
-                history_text += f"Assistant: {turn['assistant']}\n"
-            history_text += "\n"
-        
-        if history_text:
-            context_section += CONVERSATION_HISTORY_TEMPLATE.format(conversation_history=history_text)
+    # Add detailed response instruction if requested
+    additional_instructions = ""
+    if detailed_response:
+        additional_instructions = "Provide a detailed and comprehensive response. Include in-depth explanations, examples, and context where appropriate."
+    else:
+        additional_instructions = "Provide a concise and to-the-point response. Focus on clarity and brevity while still answering the question completely."
     
-    # Format the complete prompt
-    prompt = TOOL_RESULTS_TEMPLATE.format(
-        query=user_query,
-        context_section=context_section,
+    # Format the complete prompt using the new format_prompt_template function
+    return format_prompt_template(
+        TOOL_RESULTS_TEMPLATE,
+        context=context,
+        user_query=user_query,
         tool_results=formatted_results,
-        table_of_contents=table_of_contents
+        conversation_history=conversation_history,
+        table_of_contents=table_of_contents,
+        additional_instructions=additional_instructions
     )
-    
-    return prompt
 
 def parse_tool_calls(llm_response: str) -> List[Dict[str, Any]]:
     """
@@ -338,7 +332,8 @@ async def run_with_tools(
     context: str = "", 
     db: Optional[Any] = None, 
     vector_db: Optional[Any] = None,
-    conversation_history: List[Dict[str, str]] = []
+    conversation_history: List[Dict[str, str]] = [],
+    detailed_response: bool = False
 ) -> AsyncGenerator[str, None]:
     """
     Run a complete RAG workflow with tools.
@@ -351,6 +346,7 @@ async def run_with_tools(
         db: Optional database instance to inject
         vector_db: Optional vector database instance to inject
         conversation_history: Optional list of previous conversation turns
+        detailed_response: Flag indicating whether to generate a detailed response
     Returns:
         AsyncGenerator yielding response chunks as strings
     """
@@ -361,7 +357,7 @@ async def run_with_tools(
     
     if pdf and not pdf.has_embeddings:
         # Stream back a message that the embeddings are not completed
-        yield f"data: {json.dumps({'response': 'We are still processing the PDF. So smart Qna mode is not available. Please try again later in few minutes.'})}\n\n"
+        yield f"data: {json.dumps({'response': 'We are still processing the PDF. So smart Qna mode is not available. Please try again later in a minute.'})}\n\n"
         return
     
     table_of_contents = pdf.table_of_contents if pdf.table_of_contents else "unknown"
@@ -395,10 +391,11 @@ async def run_with_tools(
         context=context,
         tool_results=tool_results,
         conversation_history=conversation_history,
-        table_of_contents=table_of_contents
+        table_of_contents=table_of_contents,
+        detailed_response=detailed_response
     )
     # Stream the response
-    async for chunk in stream_llm(prompt=second_prompt):
+    async for chunk in stream_llm(prompt=second_prompt, llm_type="mistral"):
         yield chunk
 
 

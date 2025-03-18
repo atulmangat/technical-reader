@@ -1,3 +1,21 @@
+.pdf-viewer-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.pdf-viewer-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Use full viewport height since navbar is removed */
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333333;
+}
+
 .pdf-container {
     display: grid;
     grid-template-columns: 400px 1fr 500px; /* Increased index and chat widths */
@@ -20,8 +38,8 @@
     padding: 0;  /* Remove padding */
     display: flex;
     flex-direction: column;
-    min-width: 400px;
-    max-width: 600px;
+    min-width: 400px; /* Increased from 400px */
+    max-width: 700px; /* Increased from 600px */
     resize: horizontal;
     overflow: hidden;  /* Add this to prevent double scrollbars */
 }
@@ -33,6 +51,7 @@
     display: flex;
     justify-content: center;
     min-width: 500px; /* Ensure PDF has enough space */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Add resizing handles */
@@ -68,6 +87,7 @@
     display: flex;
     gap: 1rem;
     align-items: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .highlight-tools input[type="color"] {
@@ -81,18 +101,74 @@
 
 .highlight-tools button {
     padding: 0.5rem 1rem;
-    background: #1976d2;
+    background: #3a5998;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .highlight-tools button:hover {
-    background: #1565c0;
+    background: #304d8a;
 }
 
 .pdf-page {
     position: relative;
     margin-bottom: 1rem;
-} 
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Remove highlight section styles */
+.chat-section {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Add additional styling for text layers */
+.text-layer {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.pdf-text-item {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333333;
+}
+
+/* Add styling for tooltip/popup when hovering over highlights */
+.highlight:hover::after {
+    content: attr(title);
+    position: absolute;
+    top: -30px;
+    left: 0;
+    background-color: #3a5998;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* Style for loading message */
+.loading {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #3a5998;
+    font-weight: 500;
+}
+
+/* Style for error message */
+.error-message {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #e53935;
+    font-weight: 500;
+}

@@ -131,3 +131,25 @@ def get_pdf(
     return FileResponse(
         pdf.file_path, media_type="application/pdf", filename=pdf.filename
     )
+
+
+@router.get("/{pdf_id}/thumbnail")
+def get_thumbnail(
+    pdf_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    pdf = db.query(PDF).filter(PDF.id == pdf_id, PDF.user_id == current_user.id).first()
+    
+    if not pdf:
+        raise HTTPException(status_code=404, detail="PDF not found or you don't have access to it")
+    
+    # Construct the full path to the thumbnail
+    # Go up two levels from routes/v1 to src, then one more to backend
+    thumbnails_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "thumbnails")
+    thumbnail_path = os.path.join(thumbnails_dir, pdf.thumbnail_path)
+    
+    if not os.path.exists(thumbnail_path):
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+    
+    return FileResponse(thumbnail_path, media_type="image/jpeg")

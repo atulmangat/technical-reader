@@ -90,4 +90,41 @@
 
 .toggle-button:hover {
     text-decoration: underline;
-} 
+}
+
+/* Google Login Styles */
+.social-login {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.social-login p {
+    margin-bottom: 1rem;
+    color: #666;
+    position: relative;
+}
+
+.social-login p::before,
+.social-login p::after {
+    content: "";
+    display: inline-block;
+    width: 30%;
+    height: 1px;
+    background: #ddd;
+    position: absolute;
+    top: 50%;
+}
+
+.social-login p::before {
+    left: 0;
+}
+
+.social-login p::after {
+    right: 0;
+}
+
+.google-login-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}

@@ -9,7 +9,7 @@ from ...models.pdf import PDF
 from typing import Dict, Any
 from ...config import config
 from ...utils.database import get_db
-from .utils.content import parse_table_of_contents
+from .utils.toc import parse_table_of_contents
 import threading
 import concurrent.futures
 
@@ -116,9 +116,7 @@ class PDFWorker:
     def process_toc_in_parallel(self, pdf_id: str):
         """Process table of contents in a separate thread"""
         try:
-            self.logger.info(f"Starting table of contents extraction for PDF {pdf_id}")
             parse_table_of_contents(pdf_id)
-            self.logger.info(f"Completed table of contents extraction for PDF {pdf_id}")
         except Exception as e:
             self.logger.error(f"Error processing table of contents for PDF {pdf_id}: {str(e)}")
 
@@ -256,7 +254,7 @@ class PDFEmbeddingPipeline:
             try:
                 # Import here to avoid circular imports
                 from .monitor import PDFProcessingMonitor
-                self.monitor = PDFProcessingMonitor(self, interval_seconds=self.monitor_interval)
+                self.monitor = PDFProcessingMonitor(self, interval_seconds=self.monitor_interval, log_to_file=True)
                 self.monitor.start()
             except Exception as e:
                 self.logger.error(f"Failed to start monitor: {str(e)}")

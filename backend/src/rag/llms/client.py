@@ -57,7 +57,7 @@ def get_llm(llm_type: str = DEFAULT_LLM_TYPE) -> LLM:
 
 def call_llm(
     prompt: str, 
-    max_tokens: int = 1024, 
+    max_tokens: int = 8192, 
     temperature: float = 0.7,
     llm_type: str = DEFAULT_LLM_TYPE,
     response_schema: Optional[genai.types.Schema] = None
@@ -89,7 +89,7 @@ def call_llm(
 
 async def stream_llm(
     prompt: str, 
-    max_tokens: int = 1024, 
+    max_tokens: int = 8192, 
     temperature: float = 0.7,
     llm_type: str = DEFAULT_LLM_TYPE
 ):
@@ -107,7 +107,7 @@ async def stream_llm(
     """
     try:
         llm = get_llm(llm_type)
-        # Get the stream generator directly - no await needed here
+        # Get the stream generator without awaiting it
         stream_generator = llm.stream(
             prompt=prompt,
             max_tokens=max_tokens,

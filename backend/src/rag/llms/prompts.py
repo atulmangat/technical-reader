@@ -2,6 +2,43 @@
 Prompt templates for the RAG system.
 """
 
+# Common prompt sections
+CONTEXT_SECTION = """
+Context from the user, Use this to answer the user's query if it is relevant to the current user's query:
+<context>
+{context}
+</context>
+"""
+
+TABLE_OF_CONTENTS_SECTION = """
+If the table of contents is available, use it to answer queries related:
+1. To find the mapping of chapter names to start and end page numbers.
+2. To find the mapping of chapter numbers to start and end page numbers.
+3. To answer queries related to topics covered in a chapter.
+4. To answer queries related to the document structure.
+5. To answer related to chapter names.
+<table_of_contents>
+{table_of_contents}
+</table_of_contents>
+"""
+
+CONVERSATION_HISTORY_SECTION = """
+Conversation History:
+If the conversation history is available, use it to answer the user's query.
+Do not mention the conversation history directly in your response, just use the information it provides.
+Only use the conversation history to answer the user's query if it is relevant to the current user's query.
+<conversation_history>
+{conversation_history}
+</conversation_history>
+"""
+
+USER_QUERY_SECTION = """
+User query, Use the above context to answer the user's query:
+<user_query>
+{query}
+</user_query>
+"""
+
 # System prompt for the initial query with tools
 TOOLS_SYSTEM_PROMPT = """You are an AI assistant with access to various tools to help answer user queries.
 Your goal is to provide accurate, helpful responses based on the available context and tools.
@@ -41,37 +78,27 @@ INITIAL_NO_TOOLS_USE_PROMPT = """
 You are an AI assistant that can answer questions based on the provided context. 
 If the user query is not related to the PDF context, just say "The question is not related to the PDF context but let me try my best to answer the question." And then provide a response based on the your knowledge.
 
-Context:
-<context>
 {context_section}
-</context>
 
-User query:
+{conversation_history_section}
+
+User query, Use the above context to answer the user's query:
 <user_query>
 {query}
 </user_query>
 
+{additional_instructions}
 
-Please respond to the user's query.
+Respond in plain English. When appropriate, use bullet points or numbered lists to organize information clearly. Avoid using structured formats like JSON or XML in your response.
 """
 
 
 # Template for the initial query with tools
 INITIAL_TOOLS_USE_TEMPLATE = """{tools_prompt}
 
-<context>
 {context_section}
-</context>
 
-If the table of contents is available, use it to answer queries related:
-1. To find the mapping of chapter names to start and end page numbers.
-2. To find the mapping of chapter numbers to start and end page numbers.
-3. To answer queries related to topics covered in a chapter.
-4. To answer queries related to the document structure.
-5. To answer related to chapter names.
-<table_of_contents>
-{table_of_contents}
-</table_of_contents>
+{table_of_contents_section}
 
 <user_query>
 {query}
@@ -82,34 +109,16 @@ If you need to use tools, you MUST follow the exact format specified above.
 Remember to use valid JSON for parameters with double quotes around keys and string values.
 """
 
-# Template for the context section
-CONTEXT_SECTION_TEMPLATE = """Context from the user, Use this to answer the user's query:
-<context>
-{context}
-</context>
-
-"""
 
 # Template for the second prompt with tool results
-TOOL_RESULTS_TEMPLATE = """User query:
-<user_query>
-{query}
-</user_query>
-
-<context>
+TOOL_RESULTS_TEMPLATE = """
 {context_section}
-</context>
 
-If the table of contents is available, use it to answer queries related:
-1. To answer queries related to topics covered in a chapter.
-2. To answer queries related to the document structure.
-3. To answer related to chapter names.
-<table_of_contents>
-{table_of_contents}
-</table_of_contents>
+{table_of_contents_section}
+
+{conversation_history_section}
 
 You previously decided to use the following tools:
-
 <tool_results>
 {tool_results}
 </tool_results>
@@ -118,7 +127,16 @@ Based on the tool results above, please provide a final response to the user's q
 Do not mention the tools directly in your response, just use the information they provided.
 Focus on answering the user's question completely and accurately. 
 If user asks you to learn/teach/explain something, try your best to answer the question.
-The answer the user query in plain english don't use any structured format. You can use bullet points, lists, etc.
+Answer the user query in plain English - do not use any structured format like JSON or XML. 
+When appropriate, use bullet points or numbered lists to organize information clearly and make it easy to read.
+Present complex information in a digestible format with clear headings and concise explanations.
+
+{additional_instructions}
+
+User query, Use the above context to answer the user's query:
+<user_query>
+{user_query}
+</user_query>
 """
 
 # Template for formatting a single tool result
@@ -238,15 +256,53 @@ Now, parse the following extracted content and generate the chapter information:
 </extracted_content>
 """
 
+# Function to format templates with common sections
+def format_prompt_template(template, **kwargs):
+    """
+    Format a prompt template with provided parameters. This function handles both the
+    conversation history formatting and optional sections like context and table of contents.
+    
+    Args:
+        template: The template string to format
+        **kwargs: Parameters to use for formatting the template
+        
+    Returns:
+        The formatted prompt string
+    """
+    # Format the conversation history if provided
+    if "conversation_history" in kwargs and kwargs["conversation_history"]:
+        # Format the conversation history as lines of "role: content"
+        history_lines = []
+        for message in kwargs["conversation_history"]:
+            role = message.get("role", "unknown")
+            content = message.get("content", "")
+            history_lines.append(f"{role.capitalize()}: {content}")
+        
+        kwargs["conversation_history_section"] = CONVERSATION_HISTORY_SECTION.format(
+            conversation_history="\n".join(history_lines)
+        )
+    else:
+        kwargs["conversation_history_section"] = ""
+    
+    # Format the context section if provided
+    if "context" in kwargs and kwargs["context"]:
+        kwargs["context_section"] = CONTEXT_SECTION.format(context=kwargs["context"])
+    else:
+        kwargs["context_section"] = ""
+    
+    # Format the table of contents section if provided
+    if "table_of_contents" in kwargs and kwargs["table_of_contents"]:
+        kwargs["table_of_contents_section"] = TABLE_OF_CONTENTS_SECTION.format(
+            table_of_contents=kwargs["table_of_contents"]
+        )
+    else:
+        kwargs["table_of_contents_section"] = ""
+    
+    # Add additional instructions if not provided
+    if "additional_instructions" not in kwargs:
+        kwargs["additional_instructions"] = ""
+    
+    # Format the template with all the parameters
+    return template.format(**kwargs)
 
-# Template for conversation history section
-CONVERSATION_HISTORY_TEMPLATE = """ 
-Below is the conversation history between the user and the assistant.
-You can refer to the conversation history to answer the user's query. 
-Only use the conversation history to answer the user's query if it is relevant to the current user's query.
 
-Conversation History:
-<conversation_history>
-{conversation_history}
-</conversation_history>
-"""
