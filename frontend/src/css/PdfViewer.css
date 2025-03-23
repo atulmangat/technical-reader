@@ -116,10 +116,12 @@
 .pdf-page {
     position: relative;
     margin-bottom: 1rem;
+    overflow: hidden;
 }
 
 .right-panel {
     display: flex;
+    border-radius: 10px;
     flex-direction: column;
     height: 100%;
     overflow: hidden;
@@ -133,14 +135,83 @@
     flex-direction: column;
 }
 
-/* Add additional styling for text layers */
+/* Improved text layer styling */
 .text-layer {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    line-height: 1.0;
+    user-select: text;
+    z-index: 2;
+    opacity: 0.01; /* Make entire layer very transparent */
+    pointer-events: none;  /* Changed from 'all' so that empty areas do not capture pointer events */
 }
 
+/* Style for the text spans */
+.text-layer .pdf-text {
+    color: transparent;
+    position: absolute;
+    cursor: text;
+    transform-origin: 0% 0%;
+    white-space: pre;
+    pointer-events: all;
+    background-color: transparent;
+}
+
+/* This helps with text selection - make selected text more visible */
+.text-layer .pdf-text::selection {
+    background-color: rgba(0, 0, 255, 0.4);
+    color: transparent; 
+}
+
+/* Make text visible only when user is actively selecting */
+.text-layer:active {
+    opacity: 0.2;
+}
+
+.text-layer .highlight {
+    margin: -1px;
+    padding: 1px;
+    background-color: rgba(180, 0, 170, 0.2);
+    border-radius: 4px;
+}
+
+.text-layer .highlight.begin {
+    border-radius: 4px 0px 0px 4px;
+}
+
+.text-layer .highlight.end {
+    border-radius: 0px 4px 4px 0px;
+}
+
+.text-layer .highlight.middle {
+    border-radius: 0px;
+}
+
+.text-layer .highlight.selected {
+    background-color: rgba(0, 100, 0, 0.2);
+}
+
+/* Search highlight styling */
+.text-layer .search-highlight {
+    background-color: rgba(255, 230, 0, 0.4); /* yellow highlight */
+    color: transparent;
+}
+
+.text-layer .current-match {
+    background-color: rgba(255, 165, 0, 0.5); /* orange highlight */
+}
+
+/* Adjust font rendering in text layer */
 .pdf-text-item {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #333333;
+    position: absolute;
+    white-space: pre;
+    font-kerning: none;
+    transform-origin: 0% 0%;
+    cursor: text;
 }
 
 /* Add styling for tooltip/popup when hovering over highlights */
@@ -171,4 +242,75 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #e53935;
     font-weight: 500;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(245, 245, 245, 0.95);
+    border-radius: 6px;
+    padding: 0 3px;
+    border: 1px solid #e0e0e0;
+    height: 30px;
+}
+
+.zoom-controls button {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.zoom-controls button:hover:not(:disabled) {
+    background: #f0f0f0;
+}
+
+.zoom-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.zoom-controls .material-icons {
+    font-size: 18px;
+}
+
+.zoom-icon {
+    color: #666;
+    font-size: 16px !important;
+    margin-left: 2px;
+}
+
+.zoom-input {
+    width: 36px;
+    height: 26px;
+    padding: 0 2px;
+    font-size: 14px;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    outline: none;
+    background: white;
+    margin: 0 2px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.zoom-input:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.zoom-percentage {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    margin-right: 2px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }

@@ -53,7 +53,7 @@ class VectorDB:
                     models.PointStruct(
                         id=point_id,
                         vector=embedding,
-                        payload={"text": chunk, "pdf_id": str(pdf_id)},
+                        payload={"text": chunk, "pdf_id": pdf_id},
                     )
                 )
 
@@ -85,7 +85,7 @@ class VectorDB:
                         must=[
                             models.FieldCondition(
                                 key="pdf_id",
-                                match=models.MatchValue(value=str(pdf_id)),
+                                match=models.MatchValue(value=pdf_id),
                             )
                         ]
                     )
@@ -103,7 +103,7 @@ class VectorDB:
             return {"status": "error", "message": str(e)}
 
     def search_embeddings(
-        self, pdf_id: int, query_embedding: List[float], top_k: int = 40
+        self, pdf_id: str, query_embedding: List[float], top_k: int = 40
     ) -> Dict[str, Any]:
         """
         Search for similar embeddings
@@ -124,7 +124,7 @@ class VectorDB:
                     must=[
                         models.FieldCondition(
                             key="pdf_id",
-                            match=models.MatchValue(value=str(pdf_id)),
+                            match=models.MatchValue(value=pdf_id),
                         )
                     ]
                 )

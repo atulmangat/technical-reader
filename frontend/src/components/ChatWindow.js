@@ -1,94 +1,66 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { ragAPI } from '../services/api';
+import { ragAPI, userAPI } from '../services/api';
 import '../css/ChatWindow.css';
 import { marked } from 'marked'; // Import marked for markdown rendering
-import { useAuth } from '../context/AuthContext'; // Import useAuth hook
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
+import { Navbar } from './Navbar'; // Import Navbar component
 
 export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId, currentPage }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
-    const [useTools, setUseTools] = useState(true); // Default to using tools
-    const [detailedResponse, setDetailedResponse] = useState(false); // New state for detailed response toggle
-    const [modeJustSwitched, setModeJustSwitched] = useState(false);
-    const [showProfileMenu, setShowProfileMenu] = useState(false); // State for profile menu
+    const [activeTab, setActiveTab] = useState('document'); // 'document', 'notes', or 'highlights'
+    const [showTabInfo, setShowTabInfo] = useState(false); // State to track whether to show tab info
+    const [exampleNotes, setExampleNotes] = useState([
+        { id: 1, note: "This section explains the key concepts of transformer architecture", page_number: 12 },
+        { id: 2, note: "Important definition of attention mechanism", page_number: 15 },
+        { id: 3, note: "Results show significant improvement over baseline models", page_number: 28 }
+    ]);
+    const [exampleHighlights, setExampleHighlights] = useState([
+        { id: 1, content: "Attention mechanisms allow the model to focus on different parts of the input sequence", color: "yellow", page_number: 15 },
+        { id: 2, content: "Our model achieved 95.2% accuracy on the benchmark dataset", color: "green", page_number: 28 },
+        { id: 3, content: "The limitations of this approach include increased computational complexity", color: "red", page_number: 32 }
+    ]);
     const chatHistoryRef = useRef(null);
     const [streamController, setStreamController] = useState(null);
     const lastMessageRef = useRef(null); // Reference to the last message for scrolling
     const hasManuallyScrolled = useRef(false);
     // Track if we're receiving the first streaming response
     const isFirstStreamingResponse = useRef(false);
-    const { user, logout } = useAuth(); // Get user and logout function from auth context
     const navigate = useNavigate(); // Initialize navigation
+    const inputRef = useRef(null); // Reference for autofocus
+    const chatWindowRef = useRef(null); // Reference for the chat window element
+    const scrollAnchorRef = useRef(null); // Reference for scroll anchoring
 
-    // User profile helper functions (similar to Navbar component)
-    const getDisplayName = () => {
-        // Check for username in all possible locations
-        if (user?.username) return user.username;
-        if (user?.user?.username) return user.user.username;
-        
-        // If no username, try to extract from email
-        if (user?.email) return user.email.split('@')[0];
-        if (user?.user?.email) return user.user.email.split('@')[0];
-        
-        return 'User';
-    };
-    
-    const getEmail = () => {
-        if (user?.email) return user.email;
-        if (user?.user?.email) return user.user.email;
-        return 'No email available';
-    };
-    
-    const getAvatarUrl = () => {
-        return user?.avatar_url || user?.user?.avatar_url;
-    };
-
-    const handleLogout = () => {
-        logout(navigate);
-    };
-
-    const toggleProfileMenu = () => {
-        setShowProfileMenu(!showProfileMenu);
-    };
-
-    // Navigate to profile page
-    const goToProfile = () => {
-        navigate('/profile');
-        setShowProfileMenu(false);
-    };
-
-    // Close profile menu when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (showProfileMenu && 
-                event.target.closest('.profile-dropdown') === null) {
-                setShowProfileMenu(false);
-            }
-        };
-        
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
-    }, [showProfileMenu]);
+    // Handle navigation to library
+    const handleLibraryClick = useCallback(() => {
+        navigate('/');
+    }, [navigate]);
 
     // Initialize chat with welcome message
     const initializeChat = useCallback(() => {
         return [{
             type: 'assistant',
-            text: useTools 
-                ? 'How can I help you with this document?' 
-                : 'How can I help you today?',
+            text: 'How can I help you with this document?',
             timestamp: new Date().toISOString(),
             isLoading: false
         }];
-    }, [useTools]);
+    }, []);
 
-    // Set initial message
+    // Set initial message AFTER preferences have loaded
     useEffect(() => {
-        setMessages(initializeChat());
-    }, [initializeChat]);
+        if (messages.length === 0) {
+            setMessages(initializeChat());
+        }
+    }, [initializeChat, messages.length]);
+
+    // Focus input field when component mounts
+    useEffect(() => {
+        if (inputRef.current && activeTab === 'document') {
+            inputRef.current.focus();
+        }
+    }, [activeTab]);
 
     // Add keyboard shortcut to stop streaming
     useEffect(() => {
@@ -102,18 +74,32 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isStreaming, streamController]);
 
-    // Handle mode switching
-    const handleModeSwitch = (useToolsValue) => {
-        if (useTools !== useToolsValue) {
-            setUseTools(useToolsValue);
-            // Reset chat when switching modes
-            setMessages(initializeChat());
-            // Set the flag to show mode info
-            setModeJustSwitched(true);
-            // Auto-hide the info after 30 seconds
-            setTimeout(() => setModeJustSwitched(false), 30000);
+    // Add a function to show the "Saved" indicator briefly
+    const showSavedIndicator = useCallback(() => {
+        // No need to implement this function as it's no longer used
+    }, []);
+
+    // Handle tab switching
+    const handleTabSwitch = useCallback((tabName) => {
+        setActiveTab(tabName);
+        
+        // Focus the input after switching to document tab
+        // Note: We don't reinitialize chat when switching back to document tab 
+        // to preserve the conversation state between tab switches
+        if (tabName === 'document') {
+            setTimeout(() => {
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                }
+            }, 100);
         }
-    };
+
+        // Show info message for 20 seconds when tab is switched
+        setShowTabInfo(true);
+        setTimeout(() => {
+            setShowTabInfo(false);
+        }, 20000);
+    }, []);
 
     const scrollToBottom = () => {
         if (chatHistoryRef.current) {
@@ -178,6 +164,7 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
             <div className="loading-dot"></div>
             <div className="loading-dot"></div>
             <div className="loading-dot"></div>
+            <span className="thinking-text">Thinking...</span>
         </div>
     );
 
@@ -186,6 +173,14 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
             <div className="streaming-pulse"></div>
         </div>
     );
+
+    // Add AI avatar to messages
+    const MessageAvatar = ({ type }) => {
+        if (type === 'assistant') {
+            return <div className="message-avatar ai-avatar"></div>;
+        }
+        return null;
+    };
 
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -242,8 +237,7 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
             const apiRequest = ragAPI.query(pdfId, input, {
                 conversation_history: conversationHistory,
                 selected_text: selectedText,
-                use_tools: useTools,
-                detailed_response: detailedResponse,
+                use_tools: true,
                 current_page: currentPage
             });
             
@@ -395,47 +389,23 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
     };
 
     const formatMessage = (message) => {
-        if (message.type === 'selection') {
-            return null;
-        }
-
-        // Handle code blocks and tool results in messages
-        let formattedText = message.text;
+        if (!message) return '';
         
-        // Check if the message contains code blocks
-        if (message.text && message.text.includes('```')) {
-            const parts = message.text.split(/(```(?:.*?)\n[\s\S]*?```)/g);
-            
-            return (
-                <div className={`message ${message.type}-message`}>
-                    {parts.map((part, index) => {
-                        if (part.startsWith('```') && part.endsWith('```')) {
-                            // Extract language and code
-                            const match = part.match(/```(.*?)\n([\s\S]*?)```/);
-                            if (match) {
-                                const [, language, code] = match;
-                                return (
-                                    <div key={index} className="code-block">
-                                        {language && <div className="code-language">{language}</div>}
-                                        <pre>{code}</pre>
-                                    </div>
-                                );
-                            }
-                        }
-                        // Apply markdown parsing for non-code parts
-                        return <div key={index} dangerouslySetInnerHTML={{ __html: marked(part, { breaks: true }) }} />;
-                    })}
-                </div>
-            );
-        }
+        // If message is a string, format it directly
+        const messageText = typeof message === 'string' ? message : message.text || '';
         
-        // If no code blocks, apply markdown to the entire text
-        return (
-            <div 
-                className={`message ${message.type}-message`}
-                dangerouslySetInnerHTML={{ __html: marked(formattedText || '', { breaks: true }) }}
-            />
-        );
+        // Use marked to parse markdown
+        let formattedText = marked.parse(messageText, {
+            breaks: true,
+            gfm: true
+        });
+        
+        // Format page links
+        formattedText = formattedText.replace(/PAGE (\d+)/g, (match, pageNum) => {
+            return renderPageLink(pageNum);
+        });
+        
+        return formattedText;
     };
 
     // Add stop streaming function
@@ -461,177 +431,205 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
         }
     };
 
+    // Generate page link for jumping to a specific page
+    const renderPageLink = (pageNumber) => {
+        return (
+            <button 
+                className="page-link-button" 
+                onClick={() => console.log(`Navigate to page ${pageNumber}`)}
+            >
+                Page {pageNumber}
+            </button>
+        );
+    };
+
+    // Render the content based on active tab
+    const renderTabContent = () => {
+        switch(activeTab) {
+            case 'document':
+                return null; // Document Q&A tab content is handled separately
+            case 'notes':
+                return (
+                    <div className="tab-content">
+                        <div className="tab-content-header">
+                            <h3>Your Notes</h3>
+                        </div>
+                        <div className="notes-list">
+                            {exampleNotes.length > 0 ? (
+                                exampleNotes.map(note => (
+                                    <div key={note.id} className="note-item">
+                                        <div className="note-content">{note.note}</div>
+                                        <div className="note-meta">
+                                            <button 
+                                                className="page-link-button" 
+                                                onClick={() => console.log(`Navigate to page ${note.page_number}`)}
+                                            >
+                                                Page {note.page_number}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="empty-state">
+                                    <div className="empty-icon">
+                                        <span className="material-icons">note_add</span>
+                                    </div>
+                                    <p>You haven't added any notes yet.</p>
+                                    <p className="empty-hint">Select text in the document and click "Add Note" to create your first note.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            case 'highlights':
+                return (
+                    <div className="tab-content">
+                        <div className="tab-content-header">
+                            <h3>Your Highlights</h3>
+                        </div>
+                        <div className="highlights-list">
+                            {exampleHighlights.length > 0 ? (
+                                exampleHighlights.map(highlight => (
+                                    <div key={highlight.id} className="highlight-item">
+                                        <div className={`highlight-marker ${highlight.color}`}></div>
+                                        <div className="highlight-content">{highlight.content}</div>
+                                        <div className="highlight-meta">
+                                            <button 
+                                                className="page-link-button" 
+                                                onClick={() => console.log(`Navigate to page ${highlight.page_number}`)}
+                                            >
+                                                Page {highlight.page_number}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="empty-state">
+                                    <div className="empty-icon">
+                                        <span className="material-icons">highlight</span>
+                                    </div>
+                                    <p>You haven't highlighted any text yet.</p>
+                                    <p className="empty-hint">Select text in the document and choose a highlight color to create your first highlight.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
     return (
-        <div className="chat-window">
+        <div className="chat-window" ref={chatWindowRef}>
             <div className="chat-header">
                 <div className="chat-header-main">
-                    <h3>Chat Assistant</h3>
+                    <div className="chat-header-left">
+                        <div className="library-button" onClick={handleLibraryClick}>
+                            <span className="material-icons">menu_book</span>
+                            <span>Library</span>
+                        </div>
+                    </div>
+                    
+                    <div className="thinkpad-heading">
+                        <span className="material-icons">psychology</span>
+                        <h2>Thinkpad</h2>
+                    </div>
                     
                     <div className="chat-header-right">
                         <div className="profile-section">
-                            <span className="username">{getDisplayName()}</span>
+                            <span className="username">Atul</span>
                             <div className="profile-dropdown">
-                                <button 
-                                    className="profile-button" 
-                                    onClick={toggleProfileMenu}
-                                    aria-expanded={showProfileMenu}
-                                    title="Profile Menu"
-                                >
+                                <button className="profile-button">
                                     <div className="avatar-container">
-                                        {getAvatarUrl() ? (
-                                            <img 
-                                                src={getAvatarUrl()} 
-                                                alt={`${getDisplayName()}'s avatar`} 
-                                                className="avatar-image" 
-                                            />
-                                        ) : (
-                                            <div className="avatar-placeholder">
-                                                {getDisplayName().charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
+                                        <div className="avatar-placeholder">A</div>
                                     </div>
                                 </button>
-                                
-                                {showProfileMenu && (
-                                    <div className="dropdown-menu">
-                                        <div className="dropdown-header">
-                                            <div className="dropdown-avatar">
-                                                {getAvatarUrl() ? (
-                                                    <img 
-                                                        src={getAvatarUrl()} 
-                                                        alt={`${getDisplayName()}'s avatar`} 
-                                                        className="dropdown-avatar-image" 
-                                                    />
-                                                ) : (
-                                                    <div className="dropdown-avatar-placeholder">
-                                                        {getDisplayName().charAt(0).toUpperCase()}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="dropdown-user-info">
-                                                <div className="dropdown-username">{getDisplayName()}</div>
-                                                <div className="dropdown-email">{getEmail()}</div>
-                                            </div>
-                                        </div>
-                                        <div className="dropdown-content">
-                                            <button onClick={goToProfile} className="dropdown-item">
-                                                Profile
-                                            </button>
-                                            <button 
-                                                className="dropdown-item" 
-                                                onClick={goToProfile}
-                                            >
-                                                Change Avatar
-                                            </button>
-                                            <button 
-                                                className="dropdown-item logout-button" 
-                                                onClick={handleLogout}
-                                            >
-                                                Logout
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div className="chat-mode-switcher">
-                    <div className="radio-group">
-                        <label className={`radio-label ${useTools ? 'active' : ''}`}>
-                            <input
-                                type="radio"
-                                name="chat-mode"
-                                checked={useTools}
-                                onChange={() => handleModeSwitch(true)}
-                            />
-                            <span className="radio-text">Document Q&A</span>
-                        </label>
-                        <label className={`radio-label ${!useTools ? 'active' : ''}`}>
-                            <input
-                                type="radio"
-                                name="chat-mode"
-                                checked={!useTools}
-                                onChange={() => handleModeSwitch(false)}
-                            />
-                            <span className="radio-text">General Chat</span>
-                        </label>
-                    </div>
-                </div>
-                
-                {modeJustSwitched && (
-                    <div className="mode-info">
-                        <div className={`mode-info-content ${useTools ? 'tool-mode' : 'regular-mode'}`}>
-                            <div className="mode-icon">
-                                {useTools ? '📚' : '💬'}
-                            </div>
-                            <div className="mode-details">
-                                <h4>{useTools ? 'Document Q&A Mode' : 'General Chat Mode'}</h4>
-                                <p>
-                                    {useTools 
-                                        ? 'Ask questions about the document content. The AI will use the document to provide accurate answers.'
-                                        : 'Chat with the AI assistant about any topic. This mode doesn\'t reference the document.'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-            <div className="chat-history" ref={chatHistoryRef}>
-                {messages.map((message, index) => (
-                    <div 
-                        key={index} 
-                        className="message-container"
-                        ref={index === messages.length - 1 ? lastMessageRef : null}
+                <div className="chat-tabs">
+                    <button 
+                        className={`tab-button ${activeTab === 'document' ? 'active' : ''}`} 
+                        onClick={() => handleTabSwitch('document')}
                     >
-                        {message.isLoading ? <LoadingIndicator /> : 
-                         message.isStreaming ? (
-                            <>
-                                {formatMessage(message)}
-                                <StreamingIndicator />
-                            </>
-                         ) : 
-                         formatMessage(message)}
-                    </div>
-                ))}
+                        <span className="material-icons">question_answer</span>
+                        <span className="tab-label">Document Q&A</span>
+                    </button>
+                    <button 
+                        className={`tab-button ${activeTab === 'notes' ? 'active' : ''}`} 
+                        onClick={() => handleTabSwitch('notes')}
+                    >
+                        <span className="material-icons">note</span>
+                        <span className="tab-label">Notes</span>
+                        {exampleNotes.length > 0 && <span className="tab-count">{exampleNotes.length}</span>}
+                    </button>
+                    <button 
+                        className={`tab-button ${activeTab === 'highlights' ? 'active' : ''}`} 
+                        onClick={() => handleTabSwitch('highlights')}
+                    >
+                        <span className="material-icons">highlight</span>
+                        <span className="tab-label">Highlights</span>
+                        {exampleHighlights.length > 0 && <span className="tab-count">{exampleHighlights.length}</span>}
+                    </button>
+                </div>
             </div>
-            <div className="chat-input">
-                <div className="chat-input-container">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={useTools ? "Ask a question about this document..." : "Chat with AI..."}
-                        disabled={isLoading}
-                    />
-                    <div className="chat-input-options">
-                        <div className="response-type-toggle">
-                            <label className="toggle-switch" title="Toggle between brief and detailed responses">
-                                <input
-                                    type="checkbox"
-                                    checked={detailedResponse}
-                                    onChange={() => setDetailedResponse(!detailedResponse)}
-                                />
-                                <span className="toggle-slider"></span>
-                                <span className="toggle-label">{detailedResponse ? "Detailed" : "Brief"} Response</span>
-                            </label>
-                        </div>
-                        
-                        <div className="button-container">
+            
+            {activeTab === 'document' && (
+                <>
+                    <div className="chat-history" ref={chatHistoryRef}>
+                        {messages.map((message, index) => (
+                            <div 
+                                key={index} 
+                                className={`message-container ${message.type === 'user' ? 'user-container' : 'assistant-container'}`}
+                                ref={index === messages.length - 1 ? lastMessageRef : null}
+                            >
+                                <div className={`message ${message.type === 'user' ? 'user-message' : 'assistant-message'}`}>
+                                    {message.isLoading ? (
+                                        <LoadingIndicator />
+                                    ) : (
+                                        <div dangerouslySetInnerHTML={{ __html: formatMessage(message.text) }} />
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        <div className="scroll-anchor" ref={scrollAnchorRef}></div>
+                    </div>
+                    
+                    <div className="chat-input">
+                        <div className="chat-input-container">
+                            <textarea
+                                ref={inputRef}
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Type your message here..."
+                                disabled={isLoading || isStreaming}
+                            />
                             {isStreaming ? (
-                                <button onClick={handleStopStreaming} className="stop-button">
-                                    Stop
+                                <button
+                                    onClick={handleStopStreaming}
+                                    aria-label="Stop generating"
+                                >
+                                    <i className="material-icons">stop</i>
                                 </button>
                             ) : (
-                                <button onClick={handleSend} disabled={isLoading || !input.trim()}>
-                                    Send
+                                <button
+                                    onClick={handleSend}
+                                    disabled={isLoading || !input.trim()}
+                                    aria-label="Send message"
+                                >
+                                    <i className="material-icons">send</i>
                                 </button>
                             )}
                         </div>
                     </div>
-                </div>
-            </div>
+                </>
+            )}
+            
+            {(activeTab === 'notes' || activeTab === 'highlights') && renderTabContent()}
         </div>
     );
 }

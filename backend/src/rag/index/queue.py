@@ -15,7 +15,7 @@ class PDFQueue:
         self.total_added = 0
         self.total_processed = 0
 
-    def add_to_queue(self, pdf_id: int, pdf_path: str, db: Session = None) -> None:
+    def add_to_queue(self, pdf_id: str, pdf_path: str, db: Session = None) -> None:
         """Add a PDF to the processing queue"""
         with self.lock:
             queue_item = {

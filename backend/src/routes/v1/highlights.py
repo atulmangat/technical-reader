@@ -30,13 +30,13 @@ class HighlightResponse(BaseModel):
     x_end: float
     y_end: float
     color: str
-    pdf_id: int
+    pdf_id: str
     timestamp: str
 
 
 @router.get("/{pdf_id}/highlights", response_model=list[HighlightResponse])
 def get_highlights(
-    pdf_id: int = Path(...),
+    pdf_id: str = Path(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -83,7 +83,7 @@ def get_highlights(
 
 @router.post("/{pdf_id}/highlights", response_model=HighlightResponse)
 def add_highlight(
-    pdf_id: int = Path(...),
+    pdf_id: str = Path(...),
     highlight_request: HighlightRequest = Body(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -135,7 +135,7 @@ def add_highlight(
 
 @router.delete("/{pdf_id}/highlights/{highlight_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_highlight(
-    pdf_id: int = Path(...),
+    pdf_id: str = Path(...),
     highlight_id: int = Path(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),

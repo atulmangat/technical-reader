@@ -25,7 +25,7 @@ class Highlight(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Foreign keys
-    pdf_id = Column(Integer, ForeignKey("pdfs.id", ondelete="CASCADE"), nullable=False)
+    pdf_id = Column(String(5), ForeignKey("pdfs.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )

@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BiLibrary } from 'react-icons/bi';
+import { BiUserCircle } from 'react-icons/bi';
+import { FiLogOut } from 'react-icons/fi';
 import '../css/Navbar.css';
 
 export function Navbar() {
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
-    
-    useEffect(() => {
-        // Debug log user data
-        console.log('Current user data in Navbar:', user);
-    }, [user]);
+    const profileRef = useRef(null);
 
-    // Function to get display name - extract username from email if no username present
+    // User profile helper functions
     const getDisplayName = () => {
         // Check for username in all possible locations
         if (user?.username) return user.username;
@@ -26,14 +25,12 @@ export function Navbar() {
         return 'User';
     };
     
-    // Function to get user email
     const getEmail = () => {
         if (user?.email) return user.email;
         if (user?.user?.email) return user.user.email;
         return 'No email available';
     };
     
-    // Function to get avatar URL
     const getAvatarUrl = () => {
         return user?.avatar_url || user?.user?.avatar_url;
     };
@@ -46,53 +43,55 @@ export function Navbar() {
         setShowProfileMenu(!showProfileMenu);
     };
 
-    // Navigate to profile page
     const goToProfile = () => {
         navigate('/profile');
         setShowProfileMenu(false);
     };
 
+    // Close profile menu when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (profileRef.current && !profileRef.current.contains(event.target)) {
+                setShowProfileMenu(false);
+            }
+        }
+        
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
     return (
-        <nav className="navbar">
-            <div className="navbar-brand">
-                <Link to="/">Tech Reader</Link>
+        <div className="navbar">
+            <div className="navbar-left">
+                <button className="library-button" onClick={() => navigate('/')}>
+                    <div className="library-icon">
+                        <BiLibrary />
+                    </div>
+                    <span className="library-text">Tech-Reader</span>
+                </button>
             </div>
-            <div className="navbar-menu">
-                <div className="user-info">
+            <div className="navbar-right">
+                <div className="profile-section" ref={profileRef}>
                     <span className="username">{getDisplayName()}</span>
-                </div>
-                <div className="profile-dropdown">
-                    <button 
-                        className="profile-button" 
-                        onClick={toggleProfileMenu}
-                        aria-expanded={showProfileMenu}
-                        title="Profile Menu"
-                    >
-                        <div className="avatar-container">
-                            {getAvatarUrl() ? (
-                                <img 
-                                    src={getAvatarUrl()} 
-                                    alt={`${getDisplayName()}'s avatar`} 
-                                    className="avatar-image" 
-                                />
-                            ) : (
-                                <div className="avatar-placeholder">
-                                    {getDisplayName().charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-                    </button>
+                    <div className="avatar-container" onClick={toggleProfileMenu}>
+                        {getAvatarUrl() ? (
+                            <img className="avatar-image" src={getAvatarUrl()} alt="User avatar" />
+                        ) : (
+                            <div className="avatar-placeholder">
+                                {getDisplayName().charAt(0).toUpperCase()}
+                            </div>
+                        )}
+                    </div>
                     
+                    {/* Profile dropdown menu */}
                     {showProfileMenu && (
                         <div className="dropdown-menu">
                             <div className="dropdown-header">
                                 <div className="dropdown-avatar">
                                     {getAvatarUrl() ? (
-                                        <img 
-                                            src={getAvatarUrl()} 
-                                            alt={`${getDisplayName()}'s avatar`} 
-                                            className="dropdown-avatar-image" 
-                                        />
+                                        <img className="dropdown-avatar-image" src={getAvatarUrl()} alt="User avatar" />
                                     ) : (
                                         <div className="dropdown-avatar-placeholder">
                                             {getDisplayName().charAt(0).toUpperCase()}
@@ -100,24 +99,17 @@ export function Navbar() {
                                     )}
                                 </div>
                                 <div className="dropdown-user-info">
-                                    <div className="dropdown-username">{getDisplayName()}</div>
-                                    <div className="dropdown-email">{getEmail()}</div>
+                                    <span className="dropdown-username">{getDisplayName()}</span>
+                                    <span className="dropdown-email">{getEmail()}</span>
                                 </div>
                             </div>
                             <div className="dropdown-content">
-                                <button onClick={goToProfile} className="dropdown-item">
-                                    Profile
+                                <button className="dropdown-item" onClick={goToProfile}>
+                                    <BiUserCircle className="dropdown-icon" />
+                                    Profile Settings
                                 </button>
-                                <button 
-                                    className="dropdown-item" 
-                                    onClick={goToProfile}
-                                >
-                                    Change Avatar
-                                </button>
-                                <button 
-                                    className="dropdown-item logout-button" 
-                                    onClick={handleLogout}
-                                >
+                                <button className="dropdown-item logout-button" onClick={handleLogout}>
+                                    <FiLogOut className="dropdown-icon" />
                                     Logout
                                 </button>
                             </div>
@@ -125,6 +117,6 @@ export function Navbar() {
                     )}
                 </div>
             </div>
-        </nav>
+        </div>
     );
 } 

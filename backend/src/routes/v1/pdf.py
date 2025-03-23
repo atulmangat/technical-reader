@@ -7,6 +7,7 @@ from fastapi import (
     File,
     Form,
     BackgroundTasks,
+    Path,
 )
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -19,9 +20,13 @@ from ...utils.auth import get_current_user
 from ...utils.common import generate_pdf_thumbnail
 from ...rag.index.worker import PDFEmbeddingPipeline
 from ...rag.index.queue import PDFQueue
+from ...rag.index.store.embeddings import VectorDB
 from pydantic import BaseModel
 import fitz
+import logging
+
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Initialize the embedding pipeline
 pdf_pipeline = PDFEmbeddingPipeline()
@@ -29,14 +34,24 @@ pdf_pipeline = PDFEmbeddingPipeline()
 # Use the queue from the pipeline instead of creating a new one
 pdf_queue = pdf_pipeline.queue
 
+# Initialize vector database connection
+vector_db = VectorDB()
+
+thumbnail_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "thumbnails")
+
 
 class PDFResponse(BaseModel):
-    id: int
+    id: str
     title: str
     filename: str
     file_path: str
-    thumbnail_path: str
+    thumbnail_path: Optional[str] = None
     file_size: int
+    total_pages: int = None
+
+
+class PDFUpdateRequest(BaseModel):
+    title: str
 
 
 def get_total_pages(file_path: str) -> int:
@@ -52,6 +67,16 @@ def get_pdfs(
     limit: int = 20
 ):
     pdfs = db.query(PDF).filter(PDF.user_id == current_user.id).offset(skip).limit(limit).all()
+    
+    for pdf in pdfs:
+        # Ensure total_pages is populated
+        if pdf.total_pages is None and os.path.exists(pdf.file_path):
+            try:
+                pdf.total_pages = get_total_pages(pdf.file_path)
+                db.commit()
+            except Exception as e:
+                logger.error(f"Error getting page count for PDF {pdf.id}: {e}")
+    
     return pdfs
 
 
@@ -84,13 +109,17 @@ def upload_pdf(
     file_size = os.path.getsize(file_path)
 
     # Generate thumbnail
-    thumbnail_path = generate_pdf_thumbnail(file_path)
+    thumbnail_path = generate_pdf_thumbnail(thumbnail_dir, file_path)
     
     # Get total pages
     total_pages = get_total_pages(file_path)
 
+    # Generate unique ID at user level
+    pdf_id = PDF.generate_unique_id(db, current_user.id)
+
     # Create PDF record
     pdf = PDF(
+        id=pdf_id,
         title=title,
         filename=filename,
         file_path=file_path,
@@ -113,7 +142,7 @@ def upload_pdf(
 
 @router.get("/{pdf_id}")
 def get_pdf(
-    pdf_id: int, 
+    pdf_id: str, 
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -135,7 +164,7 @@ def get_pdf(
 
 @router.get("/{pdf_id}/thumbnail")
 def get_thumbnail(
-    pdf_id: int,
+    pdf_id: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -144,12 +173,90 @@ def get_thumbnail(
     if not pdf:
         raise HTTPException(status_code=404, detail="PDF not found or you don't have access to it")
     
-    # Construct the full path to the thumbnail
-    # Go up two levels from routes/v1 to src, then one more to backend
-    thumbnails_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "thumbnails")
-    thumbnail_path = os.path.join(thumbnails_dir, pdf.thumbnail_path)
-    
+    # Check if the PDF file exists
+    if not os.path.exists(pdf.file_path):
+        raise HTTPException(status_code=404, detail="PDF file not found")
+        
+ 
+    thumbnail_path = os.path.join(thumbnail_dir, pdf.thumbnail_path)
     if not os.path.exists(thumbnail_path):
-        raise HTTPException(status_code=404, detail="Thumbnail not found")
+        raise HTTPException(status_code=404, detail="Thumbnail file not found")
     
     return FileResponse(thumbnail_path, media_type="image/jpeg")
+        
+    
+   
+
+
+@router.delete("/{pdf_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_pdf(
+    pdf_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    # Find the PDF by ID and user ID (to ensure users can only delete their own PDFs)
+    pdf = db.query(PDF).filter(PDF.id == pdf_id, PDF.user_id == current_user.id).first()
+    
+    if not pdf:
+        raise HTTPException(status_code=404, detail="PDF not found or you don't have access to it")
+    
+    logger.info(f"Deleting PDF {pdf_id}: {pdf.title}")
+    
+    # Delete the actual PDF file if it exists
+    if pdf.file_path and os.path.exists(pdf.file_path):
+        logger.info(f"Deleting PDF file: {pdf.file_path}")
+        os.remove(pdf.file_path)
+    else:
+        logger.warning(f"PDF file not found for deletion: {pdf.file_path}")
+    
+    # Delete the thumbnail if it exists
+    if pdf.thumbnail_path:
+        thumbnail_path = os.path.join(thumbnail_dir, pdf.thumbnail_path)
+        
+        if os.path.exists(thumbnail_path):
+            logger.info(f"Deleting thumbnail: {thumbnail_path}")
+            os.remove(thumbnail_path)
+        else:
+            logger.warning(f"Thumbnail not found for deletion at path: {thumbnail_path}")
+    else:
+        logger.warning("No thumbnail path found in database for this PDF")
+    
+    # Delete embeddings from vector database
+    try:
+        vector_db.delete_embeddings(pdf_id)
+        logger.info(f"Deleted embeddings for PDF {pdf_id}")
+    except Exception as e:
+        logger.error(f"Error deleting embeddings for PDF {pdf_id}: {str(e)}")
+    
+    # Delete the PDF record from the database
+    # The cascade will automatically delete associated notes and highlights
+    db.delete(pdf)
+    db.commit()
+    logger.info(f"Successfully deleted PDF {pdf_id} and all associated resources")
+    
+    return None
+
+
+@router.patch("/{pdf_id}", response_model=PDFResponse)
+def update_pdf(
+    pdf_id: str,
+    update_data: PDFUpdateRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a PDF's metadata (currently just the title)"""
+    pdf = db.query(PDF).filter(
+        PDF.id == pdf_id,
+        PDF.user_id == current_user.id
+    ).first()
+    
+    if not pdf:
+        raise HTTPException(status_code=404, detail="PDF not found or you don't have access to it")
+
+    # Update title
+    pdf.title = update_data.title
+    
+    db.commit()
+    db.refresh(pdf)
+    
+    return pdf

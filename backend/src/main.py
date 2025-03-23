@@ -1,4 +1,4 @@
-from .routes.v1 import auth, highlights, notes, pdf, rag
+from .routes.v1 import auth, highlights, notes, pdf, rag, users
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -30,13 +30,10 @@ Base.metadata.create_all(bind=engine)
 app_root = os.path.dirname(os.path.abspath(__file__))
 instance_path = os.path.join(os.path.dirname(app_root), "instance")
 uploads_path = os.path.join(os.path.dirname(app_root), "uploads")
-# Use the src/thumbnails directory where thumbnails are actually stored
-thumbnails_path = os.path.join(os.path.dirname(app_root), "thumbnails")
 
 # Ensure directories exist
 os.makedirs(instance_path, exist_ok=True)
 os.makedirs(uploads_path, exist_ok=True)
-os.makedirs(thumbnails_path, exist_ok=True)
 
 app = FastAPI(title="PDF Manager API")
 
@@ -50,9 +47,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files for thumbnails
-app.mount("/thumbnails", StaticFiles(directory=thumbnails_path), name="thumbnails")
-
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(pdf.router, prefix="/api/pdfs", tags=["PDF Management"])
@@ -61,6 +55,7 @@ app.include_router(
     highlights.router, prefix="/api/pdfs", tags=["Highlights"]
 )
 app.include_router(rag.router, prefix="/api/pdfs", tags=["RAG"])
+app.include_router(users.router, prefix="/api/users", tags=["User Management"])
 
 # Setup logging
 logger = logging.getLogger(__name__)

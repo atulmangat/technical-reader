@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import '../css/PdfIndex.css';
 
 export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf, onToggle }) {
@@ -6,6 +6,7 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf, onToggle 
     const [expandedItems, setExpandedItems] = useState(new Set());
     const [activeItem, setActiveItem] = useState(null);
     const [isExpanded, setIsExpanded] = useState(false);
+    const indexRef = useRef(null);
 
     useEffect(() => {
         if (onToggle) {
@@ -32,6 +33,23 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf, onToggle 
 
         loadOutline();
     }, [pdf]);
+
+    // Add event listener to detect clicks outside when expanded
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isExpanded && indexRef.current && !indexRef.current.contains(event.target)) {
+                toggleTocExpanded();
+            }
+        };
+
+        if (isExpanded) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isExpanded]);
 
     const toggleExpand = (itemId) => {
         setExpandedItems(prev => {
@@ -140,12 +158,23 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf, onToggle 
     };
 
     return (
-        <div className={`pdf-index ${isExpanded ? 'expanded' : 'collapsed'}`}>
+        <div 
+            ref={indexRef} 
+            className={`pdf-index ${isExpanded ? 'expanded' : 'collapsed'}`}
+            onClick={() => {
+                if (!isExpanded) {
+                    toggleTocExpanded();
+                }
+            }}
+        >
             <div className="index-header">
                 <h2>Document Contents</h2>
                 <button 
                     className="toggle-toc-button" 
-                    onClick={toggleTocExpanded}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTocExpanded();
+                    }}
                     title={isExpanded ? "Collapse table of contents" : "Expand table of contents"}
                 >
                     <span className="material-icons">
@@ -155,13 +184,34 @@ export function PdfIndex({ currentPage, totalPages, onPageSelect, pdf, onToggle 
             </div>
             {!isExpanded && (
                 <>
-                    <div className="collapsed-toc-icon">
+                    <div 
+                        className="collapsed-toc-icon" 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTocExpanded();
+                        }}
+                    >
                         <span className="material-icons">menu_book</span>
                     </div>
-                    <div className="vertical-toc-title">Document Contents</div>
+                    <div 
+                        className="vertical-toc-title" 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTocExpanded();
+                        }}
+                    >
+                        Document Contents
+                    </div>
                 </>
             )}
-            <div className={`outline-container ${isExpanded ? 'visible' : 'hidden'}`}>
+            <div 
+                className={`outline-container ${isExpanded ? 'visible' : 'hidden'}`}
+                onClick={(e) => {
+                    if (isExpanded) {
+                        e.stopPropagation(); // Prevent clicks inside from bubbling up and collapsing
+                    }
+                }}
+            >
                 {outline.length > 0 ? (
                     outline.map((item, index) => renderOutlineItem(item, 0, index))
                 ) : (

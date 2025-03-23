@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, Float, ForeignKey, Index, DateTime, Enum
+from sqlalchemy import Column, Integer, Text, Float, ForeignKey, Index, DateTime, Enum, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .base import Base
@@ -17,7 +17,7 @@ class Note(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
    
     # Foreign keys
-    pdf_id = Column(Integer, ForeignKey("pdfs.id", ondelete="CASCADE"), nullable=False)
+    pdf_id = Column(String(5), ForeignKey("pdfs.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )

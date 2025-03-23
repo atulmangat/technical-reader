@@ -19,41 +19,61 @@
     margin-bottom: 2rem;
 }
 
+.library-heading {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a56db;
+    position: relative;
+    padding-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.library-heading::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 60%;
+    height: 4px;
+    background: linear-gradient(to right, #1e40af, #3b82f6, transparent);
+    border-radius: 2px;
+}
+
 .pdf-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 2rem;
     padding: 2rem 0;
+    position: relative;
 }
 
 .pdf-card {
     text-decoration: none;
     color: inherit;
-    perspective: 1000px;
 }
 
 .pdf-book {
     position: relative;
-    transform-style: preserve-3d;
-    transition: transform 0.5s;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    overflow: visible;
 }
 
 .pdf-card:hover .pdf-book {
-    transform: rotateY(-30deg);
+    transform: none;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.pdf-card:hover .pdf-thumbnail, 
+.pdf-card:hover .pdf-thumbnail-placeholder {
+    transform: translateY(-15px) scale(1.05);
+    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
 }
 
 .book-spine {
-    position: absolute;
-    left: 0;
-    width: 40px;
-    height: 100%;
-    background: #2c3e50;
-    transform: rotateY(-90deg);
-    transform-origin: left;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
+    display: none;
 }
 
 .book-title {
@@ -69,24 +89,30 @@
 .book-cover {
     background: white;
     border-radius: 4px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    transform-origin: left;
-    transition: transform 0.3s;
+    overflow: visible;
     height: 100%;
     display: flex;
     flex-direction: column;
-    min-height: 350px;
+    min-height: 320px;
+    max-height: 340px;
 }
 
-.pdf-thumbnail {
+.pdf-thumbnail, 
+.pdf-thumbnail-placeholder {
     width: 100%;
-    height: 280px;
+    height: 250px;
     background-color: #f5f5f5;
     display: flex;
     align-items: center;
     justify-content: center;
     border-bottom: 1px solid #eee;
+    transition: all 0.3s ease-out;
+    position: relative;
+    z-index: 2;
+    transform-origin: center bottom;
+}
+
+.pdf-thumbnail {
     overflow: hidden;
     position: relative;
 }
@@ -98,16 +124,6 @@
     background: white;
 }
 
-.pdf-thumbnail-placeholder {
-    width: 100%;
-    height: 280px;
-    background-color: #f5f5f5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-bottom: 1px solid #eee;
-}
-
 .pdf-thumbnail-placeholder .material-icons {
     font-size: 48px;
     color: #1976d2;
@@ -115,19 +131,67 @@
 }
 
 .pdf-info {
-    padding: 1rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 70px; /* Set a smaller min height */
+    max-height: 90px; /* Limit maximum height */
+    position: relative; /* Add relative positioning */
 }
 
 .pdf-info h3 {
     margin: 0;
-    font-size: 1.1em;
+    font-size: 1rem;
     color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    cursor: pointer;
+    position: relative;
+    padding-right: 20px;
+}
+
+.pdf-info h3:hover {
+    color: #1976d2;
+    text-decoration: underline;
+}
+
+.pdf-info h3::after {
+    content: '\e3c9';
+    font-family: 'Material Icons';
+    font-size: 16px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    opacity: 0;
+    color: #1976d2;
+    transition: opacity 0.2s ease;
+}
+
+.pdf-info h3:hover::after {
+    opacity: 1;
 }
 
 .pdf-info p {
     margin: 0.5rem 0 0;
     font-size: 0.9em;
     color: #666;
+}
+
+.pdf-info-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    padding-right: 5px;
+}
+
+.pdf-info-footer p {
+    margin: 0;
+    padding-right: 8px;
 }
 
 .upload-date {
@@ -137,23 +201,55 @@
 }
 
 .upload-button {
-    background: #1976d2;
+    display: flex;
+    align-items: center;
+    background-color: #1a56db;
+    background: linear-gradient(45deg, #1e40af, #3b82f6);
+    border: none;
+    border-radius: 24px;
     color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
+    padding: 10px 18px;
+    font-size: 16px;
+    font-weight: 700;
     cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.2s;
-    display: inline-block;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.5px;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
 }
 
 .upload-button:hover {
-    background: #1565c0;
+    background: linear-gradient(45deg, #1e3a8a, #2563eb);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    transform: translateY(-2px);
+}
+
+.upload-button:active {
+    background-color: #0a308f;
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.upload-button span {
+    position: relative;
+    z-index: 1;
+    color: white;
+}
+
+.upload-button .material-icons {
+    margin-right: 8px;
+    color: white;
+    font-size: 20px;
 }
 
 .upload-button:disabled {
-    background: #ccc;
+    background: linear-gradient(45deg, #9ca3af, #d1d5db);
     cursor: not-allowed;
+    color: #f1f1f1;
+    transform: none;
+    box-shadow: none;
 }
 
 .loading {
@@ -201,4 +297,256 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* PDF Card Container and Three-Dot Menu Styles */
+.pdf-card-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding-top: 15px;
+    margin-bottom: 15px;
+}
+
+.pdf-menu-button {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #333;
+    transition: all 0.2s ease;
+    padding: 0;
+    box-shadow: 0 2px 4px rgba(222, 220, 220, 0.1);
+}
+
+.pdf-menu-button:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: #1976d2;
+    transform: scale(1.05);
+}
+
+.pdf-menu-button .material-icons {
+    font-size: 22px;
+}
+
+.pdf-menu {
+    position: absolute;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 150px;
+    z-index: 20;
+}
+
+.pdf-menu-bottom {
+    bottom: 35px;
+    right: 5px;
+}
+
+.pdf-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    width: 100%;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    color: #333;
+    transition: background-color 0.2s;
+}
+
+.pdf-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+.pdf-menu-item .material-icons {
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+.pdf-menu-item-delete {
+    color: #d32f2f;
+}
+
+.pdf-menu-item-delete:hover {
+    background-color: #ffebee;
+}
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: #1976d2;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 20px;
+}
+
+.empty-library {
+    text-align: center;
+    padding: 4rem 0;
+    color: #666;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    font-size: 0.95rem;
+    color: #444;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem;
+    border-top: 1px solid #eee;
+    gap: 10px;
+}
+
+.modal-button {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.modal-button.cancel {
+    background-color: #f1f1f1;
+    color: #333;
+}
+
+.modal-button.delete {
+    background-color: #d32f2f;
+    color: white;
+}
+
+.modal-button.save {
+    background-color: #1976d2;
+    color: white;
+}
+
+.modal-button.save:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.modal-button:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+/* PDF info details */
+.pdf-info-details p {
+    margin: 0.5rem 0;
+}
+
+/* Rename form styles */
+.rename-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.rename-input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 100%;
+}
+
+.rename-input:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.title-edit-container {
+    width: 100%;
+    display: flex;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.title-edit-input {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 1rem;
+    border: 1px solid #1976d2;
+    border-radius: 4px;
+    outline: none;
+    background-color: #fff;
+    box-shadow: 0 0 6px rgba(25, 118, 210, 0.3);
+    font-family: inherit;
+    z-index: 10;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.title-edit-input:focus {
+    box-shadow: 0 0 8px rgba(25, 118, 210, 0.5);
 }

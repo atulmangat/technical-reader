@@ -33,7 +33,7 @@ class ChatRequest(BaseModel):
 @router.post("/{pdf_id}/chat")
 async def chat(
     request: ChatRequest,
-    pdf_id: int = Path(..., description="The ID of the PDF to chat with"), 
+    pdf_id: str = Path(..., description="The ID of the PDF to chat with"), 
     db: Session = Depends(get_db), 
     vector_db: VectorDB = Depends(get_vector_db),
     current_user: User = Depends(get_current_user)

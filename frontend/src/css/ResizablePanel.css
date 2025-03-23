@@ -49,3 +49,32 @@
     width: 48px !important;
     transition: all 0.3s ease;
 }
+
+/* Style the collapse toggle button */
+.collapse-toggle {
+    position: absolute;
+    top: 12px;
+    left: 8px;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 20;
+    transition: background-color 0.2s, transform 0.3s;
+    opacity: 0.7;
+}
+
+.collapse-toggle:hover {
+    background: #e0e0e0;
+    opacity: 1;
+}
+
+.collapse-toggle .material-icons {
+    font-size: 16px;
+    color: #555;
+}

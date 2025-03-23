@@ -1,12 +1,13 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import '../css/ResizablePanel.css';
 
-export function ResizablePanel({ children, width, minWidth, maxWidth, onResize, position }) {
+export function ResizablePanel({ children, width, minWidth, maxWidth, onResize, position, onToggleCollapse }) {
     const panelRef = useRef(null);
     const resizerRef = useRef(null);
     const isResizing = useRef(false);
     const startX = useRef(0);
     const startWidth = useRef(0);
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     const startResizing = useCallback((e) => {
         // If this is the left panel (TOC) and it's collapsed (width is 48px), don't allow resizing
@@ -41,6 +42,17 @@ export function ResizablePanel({ children, width, minWidth, maxWidth, onResize, 
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
     }, [handleMouseMove]);
+
+    const toggleCollapse = useCallback(() => {
+        // Only allow collapse functionality for left panel
+        if (position === 'left') {
+            const newCollapsedState = !isCollapsed;
+            setIsCollapsed(newCollapsedState);
+            if (onToggleCollapse) {
+                onToggleCollapse(newCollapsedState);
+            }
+        }
+    }, [isCollapsed, onToggleCollapse, position]);
 
     useEffect(() => {
         const resizer = resizerRef.current;

@@ -26,7 +26,7 @@ content_tool.set_injectable_params({"db"})
 
 @content_tool.register_function
 def get_page_content(
-    pdf_id: int, 
+    pdf_id: str, 
     page_numbers: List[int],
     surrounding_pages: int = 4,
     db: Session = None

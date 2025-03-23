@@ -1,21 +1,23 @@
 import fitz  # PyMuPDF
 import os
 from PIL import Image
+import time
+import uuid
 
 
-def generate_pdf_thumbnail(pdf_file):
+
+def generate_pdf_thumbnail(thumbnail_dir, pdf_file):
     try:
-        # Create thumbnails directory if it doesn't exist
-        thumbnails_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "thumbnails"
-        )
-        os.makedirs(thumbnails_dir, exist_ok=True)
 
-        # Generate thumbnail filename
-        thumbnail_filename = f"thumb_{os.path.splitext(os.path.basename(pdf_file))[0]}.jpg"
+        os.makedirs(thumbnail_dir, exist_ok=True)
+
+        # Generate thumbnail filename with unique identifier (timestamp + uuid)
+        unique_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        thumbnail_filename = f"thumb_{unique_id}.jpg"
+        
         # Store only the filename in the database
         thumbnail_path = thumbnail_filename
-        absolute_thumb_path = os.path.join(thumbnails_dir, thumbnail_filename)
+        absolute_thumb_path = os.path.join(thumbnail_dir, thumbnail_filename)
 
         # Create PDF document object
         doc = fitz.open(pdf_file)

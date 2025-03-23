@@ -66,6 +66,7 @@
         rgba(255, 255, 255, 1) 65%, 
         rgba(255, 255, 255, 0.6) 100%);
     box-shadow: 3px 0 10px -3px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
 }
 
 .index-header {
@@ -274,6 +275,8 @@
     justify-content: center;
     align-items: center;
     transition: all 0.2s ease;
+    cursor: pointer;
+    padding: 8px;
 }
 
 .pdf-index.collapsed:hover .collapsed-toc-icon .material-icons {
@@ -323,6 +326,8 @@
     align-items: center;
     max-height: calc(100% - 180px);
     text-shadow: 0px 0px 1px rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    padding: 5px;
 }
 
 .pdf-index.collapsed:hover .vertical-toc-title {

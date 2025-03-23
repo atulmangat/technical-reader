@@ -176,6 +176,7 @@ def parse_table_of_contents(pdf_id: str, db: Session = None) -> List[TableOfCont
         pdf.table_of_contents = response
         db.commit()
         db.refresh(pdf)
+        print(f"Response: {response}")
         chapters_data = json.loads(response).get("chapters", [])
         # Validate the structure matches our expected format
         validated_chapters = []

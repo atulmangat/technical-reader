@@ -21,14 +21,14 @@ class NoteResponse(BaseModel):
     page_number: int
     x_position: float
     y_position: float
-    pdf_id: int
+    pdf_id: str
     text: str
     timestamp: str
     
 
 @router.post("/{pdf_id}/notes")
 def save_notes(
-    pdf_id: int = Path(...),
+    pdf_id: str = Path(...),
     request: SaveNotesRequest = Body(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -65,7 +65,7 @@ def save_notes(
 
 @router.get("/{pdf_id}/notes", response_model=list[NoteResponse])
 def get_notes(
-    pdf_id: int = Path(...),
+    pdf_id: str = Path(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
     
@@ -104,7 +104,7 @@ def get_notes(
 
 @router.delete("/{pdf_id}/notes/{note_id}")
 def delete_notes(
-    pdf_id: int = Path(...),
+    pdf_id: str = Path(...),
     note_id: int = Path(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -138,7 +138,7 @@ def delete_notes(
 
 @router.put("/{pdf_id}/notes/{note_id}", response_model=NoteResponse)
 def update_notes(
-    pdf_id: int = Path(...),
+    pdf_id: str = Path(...),
     note_id: int = Path(...),
     request: SaveNotesRequest  = Body(...),
     current_user=Depends(get_current_user),
@@ -175,14 +175,12 @@ def update_notes(
     db.refresh(note)
     
     return {
-        "message": "Notes updated successfully",
-        "note": {
-            "id": note.id,
-            "note": note.note,
-            "page_number": note.page_number,
-            "x_position": note.x_position,
-            "y_position": note.y_position,
-            "pdf_id": note.pdf_id,
-            "timestamp": str(note.created_at)
-        }
+        "id": note.id,
+        "note": note.note,
+        "page_number": note.page_number,
+        "x_position": note.x_position,
+        "y_position": note.y_position,
+        "pdf_id": note.pdf_id,
+        "text": note.note,
+        "timestamp": str(note.created_at)
     }

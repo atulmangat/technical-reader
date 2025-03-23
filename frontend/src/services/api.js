@@ -70,6 +70,9 @@ export const userAPI = {
   },
   updateProfile: (userData) => api.put('/api/users/profile', userData),
   getProfile: () => api.get('/api/users/profile'),
+  // User preferences API
+  getPreferences: () => api.get('/api/users/preferences'),
+  updatePreferences: (preferences) => api.put('/api/users/preferences', { preferences }),
 };
 
 // PDF API
@@ -83,7 +86,18 @@ export const pdfAPI = {
       },
     });
   },
-  getThumbnail: (pdfId) => api.get(`/api/pdfs/${pdfId}/thumbnail`, { responseType: 'blob' }),
+  getThumbnail: (pdfId) => {
+    // Enhanced thumbnail fetch with timeout and better error handling
+    return api.get(`/api/pdfs/${pdfId}/thumbnail`, { 
+      responseType: 'blob',
+      timeout: 10000, // 10 second timeout
+      validateStatus: function (status) {
+        return status >= 200 && status < 300; // Only resolve for success status codes
+      }
+    });
+  },
+  deletePdf: (pdfId) => api.delete(`/api/pdfs/${pdfId}`),
+  renamePdf: (pdfId, newTitle) => api.patch(`/api/pdfs/${pdfId}`, { title: newTitle }),
 };
 
 // Notes API
@@ -129,147 +143,130 @@ export const ragAPI = {
         return null;
       }
       
-      // Create a URL with parameters instead of POST body
-      // because EventSource only supports GET requests
-      const params = new URLSearchParams({
-        query: question,
-        use_tools: use_tools.toString(),
-        detailed_response: detailed_response.toString()
-      });
-      
-      // Add authorization header to request
-      const headers = {
-        'Accept': 'text/event-stream',
-        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
-      };
-      
-      let source;
-      try {
-        // Use EventSourcePolyfill to support headers and POST
-        // You'll need to install: npm install eventsource-polyfill
-        // For now, we'll use a simplified approach with fetch
-        
-        // Track if the stream is active
-        let isActive = true;
-        
-        // Create request body
-        const requestBody = {
+      // Create the request options
+      const requestOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({
           query: question,
           conversation_history,
           context: selected_text ? [selected_text] : [],
           use_tools,
           detailed_response,
           current_page
-        };
-        
-        console.log('Starting stream request to', `${API_URL}/api/pdfs/${pdfId}/chat`);
-        
-        // Use fetch streaming as a simple alternative
-        fetch(`${API_URL}/api/pdfs/${pdfId}/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-            'Accept': 'text/event-stream'
-          },
-          body: JSON.stringify(requestBody)
         })
+      };
+      
+      // Create an AbortController to allow cancellation
+      const controller = new AbortController();
+      const { signal } = controller;
+      
+      // Add the signal to the request options
+      requestOptions.signal = signal;
+      
+      // Start the fetch request
+      fetch(`${API_URL}/api/pdfs/${pdfId}/chat`, requestOptions)
         .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
-          console.log('Stream connected, processing data...');
           
-          // Create a reader from the response body
+          // Create a reader for the response body stream
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
+          let buffer = '';
           
-          // Process the stream
-          function processStream() {
-            // If stream was cancelled, stop processing
-            if (!isActive) return;
-            
+          // Function to read the stream
+          function readStream() {
             reader.read().then(({ done, value }) => {
               if (done) {
-                console.log('Stream finished');
-                if (isActive && onComplete) onComplete();
-                return;
-              }
-              
-              try {
-                // Decode binary chunk to text
-                const chunk = decoder.decode(value, { stream: true });
-                console.log('Received chunk:', chunk);
-                
-                // Process chunk line by line (SSE format)
-                const lines = chunk.split('\n');
-                
-                for (let i = 0; i < lines.length; i++) {
-                  const line = lines[i].trim();
-                  
-                  // Skip empty lines
-                  if (!line) continue;
-                  
-                  // Check for data prefix (SSE format)
-                  if (line.startsWith('data:')) {
-                    const data = line.substring(5).trim();
-                    
-                    // Check for stream end marker
-                    if (data === '[DONE]') {
-                      console.log('Received [DONE] signal');
-                      if (isActive && onComplete) onComplete();
-                      return;
-                    }
-                    
-                    try {
-                      // Parse the JSON data
-                      const parsedData = JSON.parse(data);
-                      console.log('Parsed data:', parsedData);
-                      
-                      // Process the response text
-                      if (parsedData && parsedData.response !== undefined && isActive) {
-                        onMessage(parsedData.response);
+                // Handle any remaining buffer data
+                if (buffer.trim()) {
+                  try {
+                    const lines = buffer.split('\n\n');
+                    for (const line of lines) {
+                      if (line.trim().startsWith('data:')) {
+                        const data = line.replace(/^data: /, '').trim();
+                        if (data === '[DONE]') {
+                          if (onComplete) onComplete();
+                          return;
+                        }
+                        try {
+                          const parsed = JSON.parse(data);
+                          if (parsed.response) {
+                            onMessage(parsed.response);
+                          }
+                        } catch (e) {
+                          console.warn('Could not parse stream data:', data);
+                        }
                       }
-                    } catch (err) {
-                      console.warn('Error parsing SSE data:', err, data);
                     }
+                  } catch (e) {
+                    console.error('Error processing final buffer:', e);
                   }
                 }
                 
-                // Continue reading
-                processStream();
-              } catch (error) {
-                console.error('Error processing stream chunk:', error);
-                if (isActive && onError) onError(error);
+                if (onComplete) onComplete();
+                return;
               }
+              
+              // Decode the chunk and add it to the buffer
+              const chunk = decoder.decode(value, { stream: true });
+              buffer += chunk;
+              
+              // Process complete events in the buffer
+              const lines = buffer.split('\n\n');
+              buffer = lines.pop() || ''; // Keep the last incomplete chunk in the buffer
+              
+              for (const line of lines) {
+                if (line.trim().startsWith('data:')) {
+                  const data = line.replace(/^data: /, '').trim();
+                  if (data === '[DONE]') {
+                    if (onComplete) onComplete();
+                    return;
+                  }
+                  try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.response) {
+                      onMessage(parsed.response);
+                    }
+                  } catch (e) {
+                    console.warn('Could not parse stream data:', data);
+                  }
+                }
+              }
+              
+              // Continue reading
+              readStream();
             }).catch(error => {
-              if (error.name !== 'AbortError' && isActive && onError) {
-                console.error('Stream read error:', error);
-                onError(error);
+              if (error.name === 'AbortError') {
+                console.log('Stream aborted by user');
+              } else {
+                console.error('Error reading stream:', error);
+                if (onError) onError(error);
               }
             });
           }
           
-          // Start processing the stream
-          processStream();
+          // Start reading the stream
+          readStream();
         })
         .catch(error => {
-          console.error('Stream connection error:', error);
-          if (isActive && onError) onError(error);
+          console.error('Fetch error:', error);
+          if (onError) onError(error);
         });
-        
-        // Return control object
-        return {
-          cancel: () => {
-            console.log('Cancelling stream request');
-            isActive = false;
-          }
-        };
-      } catch (error) {
-        console.error('Error setting up stream:', error);
-        if (onError) onError(error);
-        return null;
-      }
+      
+      // Return control object with cancel method
+      return {
+        cancel: () => {
+          console.log('Cancelling stream request');
+          controller.abort();
+        }
+      };
     };
     
     return {
