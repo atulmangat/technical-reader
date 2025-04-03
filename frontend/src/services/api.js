@@ -274,6 +274,24 @@ export const ragAPI = {
       stream: streamRequest
     };
   },
+  
+  // New explain function to send selected text for explanation
+  explainText: (pdfId, selectedText, options = {}) => {
+    const { conversation_history = [], current_page = null } = options;
+    
+    // Create a query asking for explanation of the selected text
+    // Use the page info in the API call but not in the displayed text
+    const explainQuery = `Explain: ${selectedText}`;
+    
+    // Return the regular query function with the explain prefix
+    return ragAPI.query(pdfId, explainQuery, {
+      conversation_history,
+      selected_text: selectedText,
+      use_tools: true,
+      detailed_response: true,
+      current_page: current_page  // Still pass the current page to the API for context
+    });
+  }
 };
 
 export default api; 

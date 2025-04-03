@@ -7,13 +7,15 @@
 }
 
 .pdf-viewer-container {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh; /* Use full viewport height since navbar is removed */
+    height: 100%;
+    width: 100%;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
     overflow: hidden;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #333333;
+    background-color: #f5f5f5;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .pdf-container {
@@ -45,13 +47,9 @@
 }
 
 .pdf-content {
-    flex: 1;
-    overflow: auto;
-    background: #f5f5f5;
     display: flex;
-    justify-content: center;
-    min-width: 500px; /* Ensure PDF has enough space */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    flex: 1;
+    overflow: hidden;
 }
 
 /* Add resizing handles */
@@ -289,7 +287,7 @@
 }
 
 .zoom-input {
-    width: 36px;
+    width: 30px;
     height: 26px;
     padding: 0 2px;
     font-size: 14px;
@@ -313,4 +311,176 @@
     color: #333;
     margin-right: 2px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.pdf-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pdf-navigation,
+.pdf-zoom,
+.pdf-search,
+.pdf-highlight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pdf-navigation button,
+.pdf-zoom button,
+.pdf-search button,
+.pdf-highlight button {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.pdf-navigation button:hover,
+.pdf-zoom button:hover,
+.pdf-search button:hover,
+.pdf-highlight button:hover {
+    background-color: #2563eb;
+}
+
+.pdf-navigation button:disabled,
+.pdf-zoom button:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.pdf-search input {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 200px;
+}
+
+.pdf-canvas-container {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    background-color: #e5e7eb;
+    padding: 20px;
+}
+
+.pdf-canvas {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    background-color: white;
+}
+
+.pdf-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 18px;
+    color: #6b7280;
+}
+
+.pdf-search-results {
+    width: 300px;
+    background-color: white;
+    border-left: 1px solid #e0e0e0;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.pdf-search-results h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #111827;
+}
+
+.pdf-search-results ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pdf-search-results li {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pdf-search-results li button {
+    background-color: #e5e7eb;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    color: #4b5563;
+}
+
+.pdf-search-results li button:hover {
+    background-color: #d1d5db;
+}
+
+.search-snippet {
+    font-size: 13px;
+    margin-bottom: 5px;
+    line-height: 1.4;
+    color: #4b5563;
+}
+
+mark {
+    background-color: #fef08a;
+    padding: 1px 0;
+}
+
+.pdf-highlight .color-picker {
+    width: 30px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.highlight-color-palette {
+    position: absolute;
+    background-color: white;
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    top: 45px;
+}
+
+.pdf-highlight {
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .pdf-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .pdf-content {
+        flex-direction: column;
+    }
+    
+    .pdf-search-results {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid #e0e0e0;
+    }
 }

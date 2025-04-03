@@ -79,7 +79,7 @@
     color: #1e40af;
     flex-shrink: 0;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    padding: 0 0 12px 0;
+    padding: 0 0 10px 0;
 }
 
 /* New styles for chat header main section */
@@ -90,17 +90,21 @@
     border-radius: 20px;
     padding: 5px 16px;
     border-bottom: 1px solid rgba(59, 130, 246, 0.2);
-    margin-bottom: 10px;
+    border-top: 1px solid rgba(59, 130, 246, 0.2);
+    border-left: 1px solid rgba(59, 130, 246, 0.2);
+    border-right: 1px solid rgba(59, 130, 246, 0.2);
+    margin-bottom: 1px;
     margin-top: 1px;
 }
 
 .thinkpad-heading {
-    text-align: center;
+    font-size: 30px;
     padding: 0;
-    margin: 0;
-    display: flex;
     align-items: center;
     justify-content: center;
+    margin: 0;
+    display: flex;
+    margin-left: 20%;
     gap: 8px;
     flex: 1;
     cursor: pointer;
@@ -151,14 +155,12 @@
         rgba(255, 255, 255, 0) 100%
     );
     transform: skewX(-25deg);
-    animation: none; /* Remove default animation */
-    opacity: 0; /* Hide by default */
-    transition: opacity 0.3s ease;
+    opacity: 0;
 }
 
 .thinkpad-heading:hover h2::after {
     animation: shine 1.5s infinite;
-    opacity: 1; /* Show on hover */
+    opacity: 1;
 }
 
 @keyframes shine {
@@ -193,50 +195,6 @@
     flex: 0 0 auto;
 }
 
-/* Library button styles */
-.library-button {
-    display: flex;
-    align-items: center;
-    background-color: #3b82f6;
-    background: linear-gradient(45deg, #60a5fa, #3b82f6);
-    border: none;
-    border-radius: 24px;
-    color: white;
-    padding: 10px 18px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    letter-spacing: 0.5px;
-    position: relative;
-    overflow: hidden;
-    margin: 0;
-}
-
-.library-button:hover {
-    background: linear-gradient(45deg, #3b82f6, #2563eb);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
-}
-
-.library-button:active {
-    background-color: #2563eb;
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.library-button span {
-    position: relative;
-    z-index: 1;
-    color: white;
-}
-
-.library-button .material-icons {
-    margin-right: 8px;
-    color: white;
-    font-size: 20px;
-}
 
 .chat-header-right {
     display: flex;
@@ -263,7 +221,7 @@
     border-radius: 24px;
     border: none;
     transition: all 0.2s ease;
-    height: 40px;
+    height: 30px;
 }
 
 .profile-section:hover {
@@ -273,7 +231,7 @@
 .username {
     font-size: 14px;
     font-weight: 500;
-    color: #1e40af;
+    color: #4668d6;
 }
 
 /* Profile dropdown styles */
@@ -299,7 +257,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #3b82f6;
+    background-color: #609bfa;
     border: 2px solid rgba(255, 255, 255, 0.8);
 }
 
@@ -791,14 +749,42 @@ input:checked + .toggle-slider:before {
     word-break: break-word;
     border-radius: 18px;
     position: relative;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .user-message {
-    color: #ffffff;
-    background-color: #5594fa;
+    color: #333333;
+    background-color: #eef4ff;
+    border: 1px solid rgba(66, 135, 245, 0.2);
     font-weight: 500;
     border-bottom-right-radius: 4px;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+}
+
+
+.user-message h1, 
+.user-message h2, 
+.user-message h3, 
+.user-message h4 {
+    color: #2c5aa0;
+    margin-top: 0.8em;
+    margin-bottom: 0.5em;
+}
+
+.user-message code {
+    background-color: #e9f2ff;
+    border: 1px solid #d0e2ff;
+}
+
+.user-message blockquote {
+    padding-left: 10px;
+    margin: 10px 0;
+    font-style: italic;
+    color: #444;
+    background-color: rgba(66, 135, 245, 0.05);
+    padding: 10px;
+    border-radius: 4px;
 }
 
 .assistant-message {
@@ -806,6 +792,39 @@ input:checked + .toggle-slider:before {
     background-color: #f0f9ff;
     border: 1px solid rgba(59, 130, 246, 0.2);
     border-bottom-left-radius: 4px;
+    position: relative;
+}
+
+.assistant-message h1, 
+.assistant-message h2, 
+.assistant-message h3, 
+.assistant-message h4 {
+    color: #2c5aa0;
+    margin-top: 0.8em;
+    margin-bottom: 0.5em;
+}
+
+.assistant-message code {
+    background-color: #e9f2ff;
+    border: 1px solid #d0e2ff;
+}
+
+.assistant-message ul,
+.assistant-message ol {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.assistant-message li {
+    margin-bottom: 5px;
+}
+
+.assistant-message blockquote {
+    background-color: rgba(66, 135, 245, 0.05);
+    padding: 10px;
+    margin: 10px 0;
+    color: #444;
+    border-radius: 4px;
 }
 
 /* Remove selection message styling */
@@ -1131,31 +1150,36 @@ input:checked + .toggle-slider:before {
     }
 }
 
-/* Code blocks */
-.code-block {
-    margin: 10px 0;
-    border-radius: 6px;
-    overflow: hidden;
-    background-color: #282c34;
-    font-family: 'Fira Code', monospace;
+/* Improved code block styling */
+.message code {
+    font-family: 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    background-color: #e9f2ff;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #333;
+    border: 1px solid #d0e2ff;
 }
 
-.code-language {
-    background-color: #e0e0e0;
-    padding: 4px 10px;
-    font-size: 12px;
-    color: #616161;
-    font-family: 'Consolas', 'Monaco', monospace;
-    font-weight: 600;
-}
-
-.code-block pre {
-    padding: 12px;
-    margin: 0;
+.message pre {
+    background-color: #f6f8fa;
+    padding: 16px;
+    border-radius: 8px;
     overflow-x: auto;
-    font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 13px;
-    line-height: 1.5;
+    margin: 16px 0;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.message pre code {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.9em;
+    color: #24292e;
+    white-space: pre;
+    box-shadow: none;
 }
 
 /* Markdown styles */
@@ -1163,12 +1187,17 @@ input:checked + .toggle-slider:before {
     margin-top: 24px;
     margin-bottom: 12px;
     font-weight: 600;
-    color: #2a4887;
+    color: #2c5aa0;
     line-height: 1.3;
 }
 
 .message h1 { font-size: 1.8em; margin-top: 30px; }
-.message h2 { font-size: 1.5em; margin-top: 28px; }
+.message h2 { 
+    font-size: 1.5em; 
+    margin-top: 28px; 
+    border-bottom: 1px solid rgba(66, 135, 245, 0.2);
+    padding-bottom: 5px;
+}
 .message h3 { font-size: 1.3em; }
 .message h4 { font-size: 1.2em; }
 .message h5 { font-size: 1.1em; }
@@ -1184,15 +1213,15 @@ input:checked + .toggle-slider:before {
 }
 
 .message a {
-    color: #3a5998;
+    color: #4287f5;
     text-decoration: none;
-    border-bottom: 1px solid rgba(58, 89, 152, 0.2);
+    border-bottom: 1px solid rgba(66, 135, 245, 0.2);
     transition: all 0.2s ease;
 }
 
 .message a:hover {
-    color: #304a7d;
-    border-bottom-color: #304a7d;
+    color: #2c5aa0;
+    border-bottom-color: #2c5aa0;
 }
 
 .message ul, .message ol {
@@ -1205,10 +1234,10 @@ input:checked + .toggle-slider:before {
 }
 
 .message blockquote {
-    border-left: 3px solid #3a5998;
-    background-color: #f0f2f5;
+    background-color: rgba(66, 135, 245, 0.05);
     padding: 10px 15px;
     margin: 10px 0;
+    border-radius: 4px;
 }
 
 .message img {
@@ -1231,34 +1260,6 @@ input:checked + .toggle-slider:before {
 .message table th {
     background-color: #f0f2f5;
     font-weight: 600;
-}
-
-/* Improved code block styling */
-.message code {
-    font-family: 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    background-color: rgba(0, 0, 0, 0.05);
-    padding: 2px 5px;
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #333;
-}
-
-.message pre {
-    background-color: #f6f8fa;
-    padding: 16px;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 16px 0;
-    border: 1px solid #e0e0e0;
-}
-
-.message pre code {
-    background-color: transparent;
-    padding: 0;
-    border-radius: 0;
-    font-size: 0.9em;
-    color: #24292e;
-    white-space: pre;
 }
 
 /* Add this before the end of the file */
@@ -1673,3 +1674,111 @@ input:checked + .toggle-slider:before {
     align-items: center;
     justify-content: center;
 }
+
+/* Text selection color */
+::selection {
+  background-color: rgba(101, 157, 248, 0.2); /* Light blue with opacity */
+}
+
+/* Add styling for explanation messages */
+.message.explanation-request {
+    background-color: #eef4ff !important;
+    position: relative;
+}
+
+.message.explanation-request h2 {
+    color: #4287f5;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.2em;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(66, 135, 245, 0.2);
+    padding-bottom: 5px;
+}
+
+.message.explanation-request blockquote {
+    padding-left: 10px;
+    margin: 10px 0;
+    font-style: italic;
+    color: #444;
+    background-color: rgba(66, 135, 245, 0.05);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.message.explanation-request strong {
+    display: inline-block;
+    background-color: #4287f5;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+    margin-top: 5px;
+}
+
+.message.explanation-response {
+    background-color: #f5f9ff !important;
+    position: relative;
+}
+
+.message.explanation-response h3, 
+.message.explanation-response h4 {
+    color: #2c5aa0;
+    margin-top: 0.8em;
+    margin-bottom: 0.5em;
+}
+
+.message.explanation-response code {
+    background-color: #e9f2ff;
+    border: 1px solid #d0e2ff;
+}
+
+.message.explanation-response ul,
+.message.explanation-response ol {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.message.explanation-response li {
+    margin-bottom: 5px;
+}
+
+/* Page number badge styling - no longer used */
+/*
+.page-number-badge {
+    display: inline-block;
+    background-color: #4287f5;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+    margin: 0 2px;
+    white-space: nowrap;
+}
+
+.message.explanation-request .page-number-badge {
+    background-color: #2563eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.message.explanation-response .page-number-badge {
+    background-color: #3b82f6;
+}
+*/
+
+/* Message container hover effects */
+.message-container:hover .message {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.message-container:hover .message.user-message {
+    background-color: #e3eeff;
+}
+
+.message-container:hover .message.assistant-message {
+    background-color: #f5f9ff;
+}
+
+

@@ -1,27 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { ragAPI, userAPI } from '../services/api';
 import '../css/ChatWindow.css';
 import { marked } from 'marked'; // Import marked for markdown rendering
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
 import { Navbar } from './Navbar'; // Import Navbar component
 
-export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId, currentPage }) {
+const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pdfId, currentPage }, ref) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
-    const [activeTab, setActiveTab] = useState('document'); // 'document', 'notes', or 'highlights'
+    const [activeTab, setActiveTab] = useState('document'); // Keep document as the only tab
     const [showTabInfo, setShowTabInfo] = useState(false); // State to track whether to show tab info
-    const [exampleNotes, setExampleNotes] = useState([
-        { id: 1, note: "This section explains the key concepts of transformer architecture", page_number: 12 },
-        { id: 2, note: "Important definition of attention mechanism", page_number: 15 },
-        { id: 3, note: "Results show significant improvement over baseline models", page_number: 28 }
-    ]);
-    const [exampleHighlights, setExampleHighlights] = useState([
-        { id: 1, content: "Attention mechanisms allow the model to focus on different parts of the input sequence", color: "yellow", page_number: 15 },
-        { id: 2, content: "Our model achieved 95.2% accuracy on the benchmark dataset", color: "green", page_number: 28 },
-        { id: 3, content: "The limitations of this approach include increased computational complexity", color: "red", page_number: 32 }
-    ]);
     const chatHistoryRef = useRef(null);
     const [streamController, setStreamController] = useState(null);
     const lastMessageRef = useRef(null); // Reference to the last message for scrolling
@@ -33,10 +23,187 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
     const chatWindowRef = useRef(null); // Reference for the chat window element
     const scrollAnchorRef = useRef(null); // Reference for scroll anchoring
 
-    // Handle navigation to library
-    const handleLibraryClick = useCallback(() => {
-        navigate('/');
-    }, [navigate]);
+    // Expose functions to parent component through ref
+    useImperativeHandle(ref, () => ({
+        explainSelection: (selectedText) => {
+            if (!selectedText) return;
+            
+            // Cancel any existing stream before starting a new one
+            if (streamController) {
+                handleStopStreaming();
+            }
+            
+            // Format the selected text (limit to 100 characters with ellipsis if longer)
+            const formattedText = selectedText.length > 100 
+                ? `${selectedText.substring(0, 100)}...` 
+                : selectedText;
+                
+            // Add selected text as user message with "Explain:" prefix
+            // Remove the page number from the display message
+            const userMessage = {
+                type: 'user',
+                text: `## Explain:\n> ${formattedText}`,
+                timestamp: new Date().toISOString(),
+                isExplain: true // Mark as an explain request
+            };
+            
+            // Add loader message for the AI response
+            const assistantMessage = {
+                type: 'assistant',
+                text: '',
+                timestamp: new Date().toISOString(),
+                isLoading: true,
+                isStreaming: false,
+                isExplainResponse: true // Mark as an explain response
+            };
+            
+            // Add messages to chat
+            setMessages(prev => [...prev, userMessage, assistantMessage]);
+            
+            // Set loading state
+            setIsLoading(true);
+            setIsStreaming(false);
+            
+            // Call the API with the selected text
+            handleExplainRequest(selectedText);
+        }
+    }));
+    
+    // Function to handle explain requests
+    const handleExplainRequest = async (selectedText) => {
+        try {
+            // Cancel any existing stream again (as a safety measure)
+            if (streamController) {
+                streamController.cancel();
+                setStreamController(null);
+            }
+            
+            // Reset manual scroll tracking
+            hasManuallyScrolled.current = false;
+            isFirstStreamingResponse.current = true;
+            
+            // Get all messages for conversation history
+            const historyMessages = [...messages];
+            
+            // Format conversation history for API
+            const conversationHistory = historyMessages
+                .filter(msg => msg.type === 'user' || msg.type === 'assistant')
+                .map(msg => ({
+                    role: msg.type === 'user' ? 'user' : 'assistant',
+                    content: msg.text
+                }));
+            
+            console.log('Starting explain streaming request...');
+            console.log('Current page:', currentPage);
+            
+            // Store response text as it builds up
+            let responseText = '';
+            let hasReceivedFirstChunk = false;
+            
+            // Create the explain API request
+            const apiRequest = ragAPI.explainText(pdfId, selectedText, {
+                conversation_history: conversationHistory,
+                current_page: currentPage
+            });
+            
+            // Start the streaming request
+            const controller = apiRequest.stream(
+                // onMessage handler - called for each chunk
+                (chunk) => {
+                    console.log('Received explanation chunk:', chunk);
+                    
+                    // Mark as streaming after first chunk
+                    if (!hasReceivedFirstChunk) {
+                        hasReceivedFirstChunk = true;
+                        setIsStreaming(true);
+                        
+                        // Update the loading message to show it's streaming
+                        setMessages(prev => {
+                            const updatedMessages = [...prev];
+                            const lastMessage = updatedMessages[updatedMessages.length - 1];
+                            if (lastMessage && lastMessage.type === 'assistant' && lastMessage.isLoading) {
+                                lastMessage.isLoading = false;
+                                lastMessage.isStreaming = true;
+                            }
+                            return updatedMessages;
+                        });
+                    }
+                    
+                    // Append new chunk to the response
+                    responseText += chunk;
+                    
+                    // Update the message with the current response
+                    setMessages(prev => {
+                        const updatedMessages = [...prev];
+                        const lastMessage = updatedMessages[updatedMessages.length - 1];
+                        if (lastMessage && lastMessage.type === 'assistant') {
+                            lastMessage.text = responseText;
+                        }
+                        return updatedMessages;
+                    });
+                },
+                // onError handler
+                (error) => {
+                    console.error('Streaming error:', error);
+                    
+                    // Update the loading message to show the error
+                    setMessages(prev => {
+                        const updatedMessages = [...prev];
+                        const lastMessage = updatedMessages[updatedMessages.length - 1];
+                        if (lastMessage && lastMessage.type === 'assistant' && (lastMessage.isLoading || lastMessage.isStreaming)) {
+                            lastMessage.isLoading = false;
+                            lastMessage.isStreaming = false;
+                            lastMessage.text = "Sorry, there was an error generating an explanation. Please try again.";
+                        }
+                        return updatedMessages;
+                    });
+                    
+                    // Reset states
+                    setIsLoading(false);
+                    setIsStreaming(false);
+                    setStreamController(null);
+                },
+                // onComplete handler
+                () => {
+                    console.log('Streaming complete');
+                    
+                    // Mark the streaming as complete
+                    setMessages(prev => {
+                        const updatedMessages = [...prev];
+                        const lastMessage = updatedMessages[updatedMessages.length - 1];
+                        if (lastMessage && lastMessage.type === 'assistant') {
+                            lastMessage.isStreaming = false;
+                        }
+                        return updatedMessages;
+                    });
+                    
+                    // Reset states
+                    setIsLoading(false);
+                    setIsStreaming(false);
+                    setStreamController(null);
+                }
+            );
+            
+            // Store the controller for potential cancellation
+            setStreamController(controller);
+        } catch (error) {
+            console.error('Error handling explain request:', error);
+            // Update the message to show the error
+            setMessages(prev => {
+                const updatedMessages = [...prev];
+                const lastMessage = updatedMessages[updatedMessages.length - 1];
+                if (lastMessage && lastMessage.type === 'assistant' && lastMessage.isLoading) {
+                    lastMessage.isLoading = false;
+                    lastMessage.text = "Sorry, there was an error generating an explanation. Please try again.";
+                }
+                return updatedMessages;
+            });
+            
+            // Reset states
+            setIsLoading(false);
+            setStreamController(null);
+        }
+    };
 
     // Initialize chat with welcome message
     const initializeChat = useCallback(() => {
@@ -79,13 +246,11 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
         // No need to implement this function as it's no longer used
     }, []);
 
-    // Handle tab switching
+    // Handle tab switching - keeping this function even though we only have one tab now
     const handleTabSwitch = useCallback((tabName) => {
         setActiveTab(tabName);
         
         // Focus the input after switching to document tab
-        // Note: We don't reinitialize chat when switching back to document tab 
-        // to preserve the conversation state between tab switches
         if (tabName === 'document') {
             setTimeout(() => {
                 if (inputRef.current) {
@@ -185,7 +350,7 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
     const handleSend = async () => {
         if (!input.trim()) return;
 
-        // Cancel any existing stream
+        // Cancel any existing stream (works for both regular chat and explain requests)
         if (streamController) {
             streamController.cancel();
             setStreamController(null);
@@ -400,10 +565,12 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
             gfm: true
         });
         
-        // Format page links
+        // Format page links only (not regular page numbers)
         formattedText = formattedText.replace(/PAGE (\d+)/g, (match, pageNum) => {
             return renderPageLink(pageNum);
         });
+        
+        // Don't convert "Page X" format to badges
         
         return formattedText;
     };
@@ -443,193 +610,136 @@ export function ChatWindow({ initialContext, onAddNote, currentSelection, pdfId,
         );
     };
 
-    // Render the content based on active tab
-    const renderTabContent = () => {
-        switch(activeTab) {
-            case 'document':
-                return null; // Document Q&A tab content is handled separately
-            case 'notes':
-                return (
-                    <div className="tab-content">
-                        <div className="tab-content-header">
-                            <h3>Your Notes</h3>
-                        </div>
-                        <div className="notes-list">
-                            {exampleNotes.length > 0 ? (
-                                exampleNotes.map(note => (
-                                    <div key={note.id} className="note-item">
-                                        <div className="note-content">{note.note}</div>
-                                        <div className="note-meta">
-                                            <button 
-                                                className="page-link-button" 
-                                                onClick={() => console.log(`Navigate to page ${note.page_number}`)}
-                                            >
-                                                Page {note.page_number}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="empty-state">
-                                    <div className="empty-icon">
-                                        <span className="material-icons">note_add</span>
-                                    </div>
-                                    <p>You haven't added any notes yet.</p>
-                                    <p className="empty-hint">Select text in the document and click "Add Note" to create your first note.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            case 'highlights':
-                return (
-                    <div className="tab-content">
-                        <div className="tab-content-header">
-                            <h3>Your Highlights</h3>
-                        </div>
-                        <div className="highlights-list">
-                            {exampleHighlights.length > 0 ? (
-                                exampleHighlights.map(highlight => (
-                                    <div key={highlight.id} className="highlight-item">
-                                        <div className={`highlight-marker ${highlight.color}`}></div>
-                                        <div className="highlight-content">{highlight.content}</div>
-                                        <div className="highlight-meta">
-                                            <button 
-                                                className="page-link-button" 
-                                                onClick={() => console.log(`Navigate to page ${highlight.page_number}`)}
-                                            >
-                                                Page {highlight.page_number}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="empty-state">
-                                    <div className="empty-icon">
-                                        <span className="material-icons">highlight</span>
-                                    </div>
-                                    <p>You haven't highlighted any text yet.</p>
-                                    <p className="empty-hint">Select text in the document and choose a highlight color to create your first highlight.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            default:
-                return null;
-        }
-    };
-
     return (
         <div className="chat-window" ref={chatWindowRef}>
-            <div className="chat-header">
-                <div className="chat-header-main">
-                    <div className="chat-header-left">
-                        <div className="library-button" onClick={handleLibraryClick}>
-                            <span className="material-icons">menu_book</span>
-                            <span>Library</span>
+            <div className="chat-header" style={{ 
+                padding: '12px 16px',
+                borderBottom: '1px solid #eaeaea'
+            }}>
+                <div className="chat-header-main" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                }}>
+                    <div className="assistant-title" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flex: '1'
+                    }}>
+                        <span className="material-icons" style={{ 
+                            fontSize: '24px', 
+                            color: '#4285f4',
+                            marginRight: '10px'
+                        }}>psychology</span>
+                        
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}>
+                            <h2 style={{
+                                margin: '0',
+                                fontSize: '1.1rem',
+                                fontWeight: '600',
+                                color: '#202124'
+                            }}>Document Assistant</h2>
+                            <span style={{
+                                fontSize: '0.75rem',
+                                color: '#5f6368',
+                                fontWeight: 400
+                            }}>Powered by AI</span>
                         </div>
-                    </div>
-                    
-                    <div className="thinkpad-heading">
-                        <span className="material-icons">psychology</span>
-                        <h2>Thinkpad</h2>
                     </div>
                     
                     <div className="chat-header-right">
-                        <div className="profile-section">
-                            <span className="username">Atul</span>
+                        <div className="profile-section" style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            <span className="username" style={{
+                                fontSize: '0.9rem',
+                                color: '#5f6368'
+                            }}>Atul</span>
                             <div className="profile-dropdown">
-                                <button className="profile-button">
-                                    <div className="avatar-container">
-                                        <div className="avatar-placeholder">A</div>
+                                <button className="profile-button" style={{
+                                    border: 'none',
+                                    background: 'none',
+                                    cursor: 'pointer',
+                                    padding: '0'
+                                }}>
+                                    <div className="avatar-container" style={{
+                                        width: '32px',
+                                        height: '32px',
+                                        borderRadius: '50%',
+                                        backgroundColor: '#4285f4',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <div className="avatar-placeholder" style={{
+                                            color: 'white',
+                                            fontSize: '16px',
+                                            fontWeight: '500'
+                                        }}>A</div>
                                     </div>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div className="chat-tabs">
-                    <button 
-                        className={`tab-button ${activeTab === 'document' ? 'active' : ''}`} 
-                        onClick={() => handleTabSwitch('document')}
-                    >
-                        <span className="material-icons">question_answer</span>
-                        <span className="tab-label">Document Q&A</span>
-                    </button>
-                    <button 
-                        className={`tab-button ${activeTab === 'notes' ? 'active' : ''}`} 
-                        onClick={() => handleTabSwitch('notes')}
-                    >
-                        <span className="material-icons">note</span>
-                        <span className="tab-label">Notes</span>
-                        {exampleNotes.length > 0 && <span className="tab-count">{exampleNotes.length}</span>}
-                    </button>
-                    <button 
-                        className={`tab-button ${activeTab === 'highlights' ? 'active' : ''}`} 
-                        onClick={() => handleTabSwitch('highlights')}
-                    >
-                        <span className="material-icons">highlight</span>
-                        <span className="tab-label">Highlights</span>
-                        {exampleHighlights.length > 0 && <span className="tab-count">{exampleHighlights.length}</span>}
-                    </button>
-                </div>
             </div>
             
-            {activeTab === 'document' && (
-                <>
-                    <div className="chat-history" ref={chatHistoryRef}>
-                        {messages.map((message, index) => (
-                            <div 
-                                key={index} 
-                                className={`message-container ${message.type === 'user' ? 'user-container' : 'assistant-container'}`}
-                                ref={index === messages.length - 1 ? lastMessageRef : null}
-                            >
-                                <div className={`message ${message.type === 'user' ? 'user-message' : 'assistant-message'}`}>
-                                    {message.isLoading ? (
-                                        <LoadingIndicator />
-                                    ) : (
-                                        <div dangerouslySetInnerHTML={{ __html: formatMessage(message.text) }} />
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                        <div className="scroll-anchor" ref={scrollAnchorRef}></div>
-                    </div>
-                    
-                    <div className="chat-input">
-                        <div className="chat-input-container">
-                            <textarea
-                                ref={inputRef}
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Type your message here..."
-                                disabled={isLoading || isStreaming}
-                            />
-                            {isStreaming ? (
-                                <button
-                                    onClick={handleStopStreaming}
-                                    aria-label="Stop generating"
-                                >
-                                    <i className="material-icons">stop</i>
-                                </button>
+            <div className="chat-history" ref={chatHistoryRef}>
+                {messages.map((message, index) => (
+                    <div 
+                        key={index} 
+                        className={`message-container ${message.type === 'user' ? 'user-container' : 'assistant-container'}`}
+                        ref={index === messages.length - 1 ? lastMessageRef : null}
+                    >
+                        <div className={`message ${message.type === 'user' ? 'user-message' : 'assistant-message'} 
+                            ${message.isExplain ? 'explanation-request' : ''} 
+                            ${message.isExplainResponse ? 'explanation-response' : ''}`}>
+                            {message.isLoading ? (
+                                <LoadingIndicator />
                             ) : (
-                                <button
-                                    onClick={handleSend}
-                                    disabled={isLoading || !input.trim()}
-                                    aria-label="Send message"
-                                >
-                                    <i className="material-icons">send</i>
-                                </button>
+                                <div dangerouslySetInnerHTML={{ __html: formatMessage(message.text) }} />
                             )}
                         </div>
                     </div>
-                </>
-            )}
+                ))}
+                <div className="scroll-anchor" ref={scrollAnchorRef}></div>
+            </div>
             
-            {(activeTab === 'notes' || activeTab === 'highlights') && renderTabContent()}
+            <div className="chat-input">
+                <div className="chat-input-container">
+                    <textarea
+                        ref={inputRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Ask questions about this document..."
+                        disabled={isLoading || isStreaming}
+                    />
+                    {isStreaming ? (
+                        <button
+                            onClick={handleStopStreaming}
+                            aria-label="Stop generating"
+                        >
+                            <i className="material-icons">stop</i>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading || !input.trim()}
+                            aria-label="Send message"
+                        >
+                            <i className="material-icons">send</i>
+                        </button>
+                    )}
+                </div>
+            </div>
         </div>
     );
-}
+});
+
+export default ChatWindow;

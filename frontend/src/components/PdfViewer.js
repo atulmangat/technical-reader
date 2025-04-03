@@ -4,8 +4,8 @@ import "pdfjs-dist/web/pdf_viewer.css";
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { PdfIndex } from './PdfIndex';
 import { ResizablePanel } from './ResizablePanel';
-import { ChatWindow } from './ChatWindow';
-import { pdfAPI, highlightsAPI } from '../services/api';
+import ChatWindow from './ChatWindow';
+import { pdfAPI, highlightsAPI, ragAPI } from '../services/api';
 import { TextLayerBuilder } from "pdfjs-dist/build/pdf";
 
 // Set worker path correctly
@@ -74,6 +74,35 @@ export function PdfViewer() {
     // Add a ref for the text selection menu
     const menuRef = useRef(null);
 
+    // Add a ref to access the ChatWindow component
+    const chatWindowRef = useRef(null);
+
+    // Add handler for highlight deletion - moved up before being used
+    const handleDeleteHighlight = useCallback((highlightId) => {
+        // Find the highlight in our local state
+        const highlightToDelete = highlights.find(h => 
+            (h.id === highlightId) || (h.highlight_id === highlightId)
+        );
+        
+        if (!highlightToDelete) return;
+        
+        // Determine the API ID based on the source
+        const apiHighlightId = highlightToDelete.highlight_id || highlightToDelete.id;
+        
+        // Call the API to delete the highlight
+        highlightsAPI.deleteHighlight(id, apiHighlightId)
+            .then(() => {
+                console.log('Highlight deleted successfully');
+                // Update the local state
+                setHighlights(prev => prev.filter(h => 
+                    (h.id !== highlightId) && (h.highlight_id !== highlightId)
+                ));
+            })
+            .catch(error => {
+                console.error('Error deleting highlight:', error);
+            });
+    }, [highlights, id]);
+
     // First, define handlePageChange
     const handlePageChange = useCallback((newPage, scrollTo = null) => {
         const direction = newPage > currentPage ? 'next' : 'prev';
@@ -131,22 +160,73 @@ export function PdfViewer() {
         highlightLayer.style.left = `${viewerRef.current.offsetLeft}px`;
 
         highlights.forEach(highlight => {
-            if (highlight.page === currentPage) {
+            // Handle both local highlights and those from the API
+            const isLocalHighlight = highlight.page !== undefined;
+            const highlightPage = isLocalHighlight ? highlight.page : highlight.page_number;
+            
+            if (highlightPage === currentPage) {
+                // Create highlight container
+                const highlightContainer = document.createElement('div');
+                highlightContainer.className = 'highlight-container';
+                highlightContainer.style.position = 'absolute';
+                
+                // Create highlight element
                 const div = document.createElement('div');
                 div.className = 'highlight';
                 div.style.position = 'absolute';
-                div.style.backgroundColor = highlight.color ? highlight.color : 'rgba(255, 255, 0, 0.3)';
-                div.style.left = `${highlight.position.left}px`;
-                div.style.top = `${highlight.position.top}px`;
-                div.style.width = `${highlight.position.width}px`;
-                div.style.height = `${highlight.position.height}px`;
-                div.title = highlight.note;
-                highlightLayer.appendChild(div);
+                div.style.width = '100%';
+                div.style.height = '100%';
+                div.setAttribute('data-highlight-id', highlight.id || highlight.highlight_id);
+                
+                // Set the background color
+                div.style.backgroundColor = highlight.color || 'rgba(255, 255, 0, 0.3)';
+                
+                // Set the position based on the source format
+                if (isLocalHighlight) {
+                    // Local highlight
+                    highlightContainer.style.left = `${highlight.position.left}px`;
+                    highlightContainer.style.top = `${highlight.position.top}px`;
+                    highlightContainer.style.width = `${highlight.position.width}px`;
+                    highlightContainer.style.height = `${highlight.position.height}px`;
+                } else {
+                    // API highlight - calculate from x_start, y_start, x_end, y_end
+                    highlightContainer.style.left = `${highlight.x_start}px`;
+                    highlightContainer.style.top = `${highlight.y_start}px`;
+                    highlightContainer.style.width = `${highlight.x_end - highlight.x_start}px`;
+                    highlightContainer.style.height = `${highlight.y_end - highlight.y_start}px`;
+                }
+                
+                // Add tooltip with note if available
+                const note = highlight.note || '';
+                div.title = note;
+                
+                // Create delete button
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'highlight-delete-button';
+                deleteButton.innerHTML = '×';
+                deleteButton.title = 'Delete highlight';
+                deleteButton.setAttribute('data-highlight-id', highlight.id || highlight.highlight_id);
+                
+                // Add click event to delete button
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const highlightId = deleteButton.getAttribute('data-highlight-id');
+                    if (window.confirm('Delete this highlight?')) {
+                        handleDeleteHighlight(highlightId);
+                    }
+                });
+                
+                // Add the highlight and delete button to the container
+                highlightContainer.appendChild(div);
+                highlightContainer.appendChild(deleteButton);
+                
+                // Add the container to the layer
+                highlightLayer.appendChild(highlightContainer);
             }
         });
 
         container.appendChild(highlightLayer);
-    }, [currentPage]);
+    }, [currentPage, handleDeleteHighlight]);
 
     // Add dependencies to useEffect
     useEffect(() => {
@@ -282,7 +362,7 @@ export function PdfViewer() {
                         element.textContent = item.str;
                         element.style.position = 'absolute';
                         element.style.left = `${left}px`;
-                        element.style.top = `${top - fontSize}px`;
+                        element.style.top = `${top}px`;
                         element.style.fontSize = `${fontSize}px`;
                         element.style.fontFamily = item.fontName || 'sans-serif';
                         element.style.whiteSpace = 'pre';
@@ -336,41 +416,54 @@ export function PdfViewer() {
 
         if (text.length > 0 && selectionStart) {
             const isTextLayerSelection = e.target.closest('.text-layer');
-            if (isTextLayerSelection) {
+            if (isTextLayerSelection && textLayerRef.current) { // Added null check for textLayerRef
                 const textLayerRect = textLayerRef.current.getBoundingClientRect();
-                const range = selection.getRangeAt(0);
-                const rects = range.getClientRects();
                 
-                if (rects.length > 0) {
-                    const firstRect = rects[0];
-                    setMenuPosition({ x: firstRect.left, y: firstRect.top - 40 });
-                    const lastRect = rects[rects.length - 1];
-                    const position = {
-                        left: (firstRect.left - textLayerRect.left) / scale,
-                        top: (firstRect.top - textLayerRect.top) / scale,
-                        width: Math.max(
-                            lastRect.right - firstRect.left,
-                            firstRect.right - lastRect.left
-                        ) / scale,
-                        height: Math.max(
-                            lastRect.bottom - firstRect.top,
-                            firstRect.bottom - lastRect.top
-                        ) / scale
-                    };
+                // Ensure there's a selection range
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const rects = range.getClientRects();
+                    
+                    if (rects.length > 0) {
+                        const firstRect = rects[0];
+                        const boundingBox = range.getBoundingClientRect();
+                        
+                        // Calculate position relative to the text layer and scale
+                        const adjustedPosition = {
+                            left: (boundingBox.left - textLayerRect.left) / scale,
+                            top: (boundingBox.top - textLayerRect.top) / scale,
+                            width: boundingBox.width / scale,
+                            height: boundingBox.height / scale
+                        };
 
-                    setSelectedText(text);
-                    setCurrentSelection({
-                        text,
-                        page: currentPage,
-                        position
-                    });
-                }
-            }
+                        // Defer state updates slightly using setTimeout 0
+                        setTimeout(() => {
+                            setSelectedText(text);
+                            setCurrentSelection({
+                                text,
+                                page: currentPage,
+                                position: adjustedPosition
+                            });
+                            // Set menu position after state updates are likely processed
+                            setMenuPosition({ x: firstRect.left, y: firstRect.top - 40 });
+                        }, 0);
+                    }
+                } // else: No range found, do nothing
+            } // else: Not a text layer selection or ref is missing, do nothing
         } else {
             // Clear the menu when clicking elsewhere or when there's no selection
-            setMenuPosition(null);
-            setShowHighlightPalette(false);
+            // Defer this clear operation as well for consistency
+            setTimeout(() => {
+                if (window.getSelection().toString().trim().length === 0) {
+                     setMenuPosition(null);
+                     setShowHighlightPalette(false);
+                     // Optionally clear currentSelection/selectedText if needed
+                     // setCurrentSelection(null);
+                     // setSelectedText('');
+                }
+            }, 0);
         }
+        // Reset selection start immediately
         setSelectionStart(null);
     };
 
@@ -554,13 +647,82 @@ export function PdfViewer() {
 
     const handleHighlightSelection = useCallback((color) => {
         if (currentSelection) {
-            setHighlights(prev => [...prev, { ...currentSelection, color, id: Date.now() }]);
+            const temporaryId = 'temp-' + Date.now();
+            // Save the highlight to the local state immediately with a temporary ID
+            const newHighlight = { 
+                ...currentSelection, 
+                color, 
+                id: temporaryId, // Use temporary ID
+                highlight_id: null, // Indicate it's not saved yet
+                isSaving: true, // Optional: Add a flag for visual feedback
+            };
+            setHighlights(prev => [...prev, newHighlight]);
+            
+            // Prepare data for the backend API
+            const highlightData = {
+                content: currentSelection.text,
+                page_number: currentSelection.page,
+                x_start: currentSelection.position.left,
+                y_start: currentSelection.position.top,
+                x_end: currentSelection.position.left + currentSelection.position.width,
+                y_end: currentSelection.position.top + currentSelection.position.height,
+                color: color,
+                note: "" // Default empty note
+            };
+            
+            // Store current selection details before clearing
+            const selectionToClear = currentSelection;
+            
+            // Clear the selection UI immediately after initiating the save
             setCurrentSelection(null);
             setSelectedText('');
             setMenuPosition(null);
             setShowHighlightPalette(false);
+            
+            // Call the API to create the highlight
+            highlightsAPI.createHighlight(id, highlightData)
+              .then(response => {
+                  console.log('Highlight saved successfully:', response.data);
+                  const savedHighlight = response.data; // Assuming API returns the saved highlight with its ID
+                  
+                  // Update the specific highlight in the local state with the confirmed ID from the backend
+                  setHighlights(prev => prev.map(h => {
+                      if (h.id === temporaryId) {
+                          // Update the temporary highlight with real data from API
+                          return { 
+                              ...h, 
+                              id: savedHighlight.highlight_id || savedHighlight.id, // Use the backend ID
+                              highlight_id: savedHighlight.highlight_id || savedHighlight.id, 
+                              isSaving: false,
+                              // Map other fields from savedHighlight if necessary
+                              page_number: savedHighlight.page_number,
+                              x_start: savedHighlight.x_start,
+                              y_start: savedHighlight.y_start,
+                              x_end: savedHighlight.x_end,
+                              y_end: savedHighlight.y_end,
+                              color: savedHighlight.color,
+                              note: savedHighlight.note,
+                              content: savedHighlight.content,
+                          };
+                      }
+                      return h; // Keep other highlights as they are
+                  }));
+                  
+                  // NOTE: We removed the loadHighlights() call here to avoid overwriting the state
+                  
+              })
+              .catch(error => {
+                  console.error('Error saving highlight:', error);
+                  // If saving failed, remove the temporary highlight from local state
+                  setHighlights(prev => prev.filter(h => h.id !== temporaryId));
+                  
+                  // Optionally: Restore selection state or show an error message
+                  // setCurrentSelection(selectionToClear); 
+                  // setSelectedText(selectionToClear.text);
+                  alert('Failed to save highlight. Please try again.'); 
+              });
         }
-    }, [currentSelection]);
+    }, [currentSelection, id]); // Removed loadHighlights dependency as it's no longer directly called
 
     // Update handleZoom to update customZoom state
     const handleZoom = useCallback((delta) => {
@@ -624,23 +786,25 @@ export function PdfViewer() {
         }
     }, [currentPage, scale, scrollPosition]);
 
-    useEffect(() => {
-        const loadHighlights = async () => {
-            try {
-                const response = await highlightsAPI.getHighlightsByPdf(id);
-                
-                if (response.status === 200) {
-                    setHighlights(response.data);
-                }
-            } catch (error) {
-                console.error('Error loading highlights:', error);
+    // Extract loadHighlights as a memoized function
+    const loadHighlights = useCallback(async () => {
+        try {
+            const response = await highlightsAPI.getHighlightsByPdf(id);
+            
+            if (response.status === 200) {
+                setHighlights(response.data);
             }
-        };
-
+        } catch (error) {
+            console.error('Error loading highlights:', error);
+        }
+    }, [id]);
+    
+    // Use the extracted function in the useEffect
+    useEffect(() => {
         if (id) {
             loadHighlights();
         }
-    }, [id]);
+    }, [id, loadHighlights]);
 
     // Add this effect to handle TOC collapse state changes
     useEffect(() => {
@@ -866,168 +1030,297 @@ export function PdfViewer() {
         // Remove search highlights from text layer
         const textLayer = textLayerRef.current;
         if (textLayer) {
-            const highlights = textLayer.querySelectorAll('.search-highlight');
+            const highlights = textLayer.querySelectorAll('.search-highlight, .current-match'); // Select both types
             highlights.forEach(highlight => {
                 // If the highlight is wrapping text, unwrap it (restore original)
-                if (highlight.firstChild) {
-                    highlight.replaceWith(highlight.firstChild);
+                if (highlight.parentNode && highlight.firstChild && highlight.firstChild.nodeType === Node.TEXT_NODE) {
+                     // Replace the highlight span with its text content
+                     highlight.parentNode.replaceChild(document.createTextNode(highlight.textContent), highlight);
                 } else {
-                    highlight.remove();
+                     // If it's somehow an empty highlight or structure changed, just remove it
+                     highlight.remove();
                 }
             });
+             // Normalize the text layer after removing highlights to merge adjacent text nodes
+             textLayer.normalize();
         }
-        setSearchResults([]);
-        setCurrentResultIndex(-1);
+        // DO NOT reset state here. State should be managed by the calling function.
+        // setSearchResults([]);  <-- REMOVED
+        // setCurrentResultIndex(-1); <-- REMOVED
     }, []);
 
-    // Perform search in the current page
-    const searchInCurrentPage = useCallback(async () => {
+    // Fetches text content for all pages
+    const fetchAllPagesText = useCallback(async () => {
+        if (!pdf) return [];
+        const numPages = pdf.numPages;
+        const promises = [];
+        console.log(`Fetching text for ${numPages} pages...`);
+        for (let i = 1; i <= numPages; i++) {
+            // Add a catch block for individual page errors
+            promises.push(
+                pdf.getPage(i)
+                   .then(page => page.getTextContent())
+                   .catch(error => {
+                       console.error(`Error fetching text content for page ${i}:`, error);
+                       return null; // Return null for failed pages
+                   })
+            );
+        }
+        // Return an array where each element is { pageNumber, textContent }
+        const allTextContents = await Promise.all(promises);
+        console.log("Finished fetching text for all pages.");
+        // Filter out any null results from failed pages
+        return allTextContents
+            .map((textContent, index) => (textContent ? {
+                pageNumber: index + 1,
+                textContent: textContent
+            } : null))
+            .filter(Boolean);
+    }, [pdf]);
+
+    // Highlight a search result in the text layer for the *currently rendered page*
+    const highlightSearchResult = useCallback((result, index, currentMatches) => {
+        if (!result) {
+            console.warn("highlightSearchResult called with invalid result");
+            return;
+        }
+        // Ensure we are on the correct page before highlighting
+        if (result.pageNumber !== currentPage) {
+            console.log(`Highlight request for page ${result.pageNumber}, but currently on page ${currentPage}. Skipping highlight.`);
+            return; // Don't highlight if not on the correct page
+        }
+
+        console.log(`Highlighting search result ${index + 1} of ${currentMatches.length} on page ${currentPage}`);
+        
+        // Clear previous visual highlights from the current page only
+        clearSearchHighlights(); 
+
+        const textLayer = textLayerRef.current;
+        if (!textLayer) {
+            console.error("Text layer not found for highlighting on page", currentPage);
+            return;
+        }
+
+        // Find the specific text item based on the itemIndex stored in the match
+        const targetItemElement = textLayer.querySelectorAll('.pdf-text')[result.itemIndex];
+
+        if (!targetItemElement) {
+            console.error(`Could not find text item with index ${result.itemIndex} on page ${currentPage} to highlight.`);
+            return;
+        }
+
+        // Mark all matching elements *on the current page* with highlights
+        currentMatches.forEach((match, i) => {
+            // Only highlight if the match is on the current page
+            if (match.pageNumber === currentPage) {
+                const itemElement = textLayer.querySelectorAll('.pdf-text')[match.itemIndex];
+                if (itemElement) {
+                    const text = itemElement.textContent; 
+                    const foundIndex = match.startIndex;
+                    const matchText = match.text;
+
+                    // Create parts: before match, match, after match
+                    const beforeMatch = text.substring(0, foundIndex);
+                    const matchSpanText = text.substring(foundIndex, foundIndex + matchText.length);
+                    const afterMatch = text.substring(foundIndex + matchText.length);
+
+                    // Replace the content with highlighted version
+                    itemElement.innerHTML = ''; // Clear existing content
+
+                    if (beforeMatch) {
+                        itemElement.appendChild(document.createTextNode(beforeMatch));
+                    }
+
+                    const highlightSpan = document.createElement('span');
+                    highlightSpan.className = i === index ? 'search-highlight current-match' : 'search-highlight';
+                    highlightSpan.textContent = matchSpanText; // Use the text extracted during search
+                    itemElement.appendChild(highlightSpan);
+
+                    if (afterMatch) {
+                        itemElement.appendChild(document.createTextNode(afterMatch));
+                    }
+                } else {
+                     console.warn(`Could not find item ${match.itemIndex} on page ${currentPage} during highlighting loop.`);
+                }
+            }
+        });
+
+        // Scroll the current result into view if it's the one we are focused on
+        if (index >= 0 && result.pageNumber === currentPage) {
+            const currentHighlight = textLayer.querySelector('.current-match');
+            if (currentHighlight) {
+                // Scroll into view logic (simplified)
+                currentHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                console.log("Scrolled current match into view.");
+            } else {
+                console.warn("Could not find .current-match element to scroll to.");
+            }
+        }
+
+        // Note: setCurrentResultIndex is handled by the calling function (navigateToMatch)
+    }, [clearSearchHighlights, currentPage]); // Depends on currentPage now
+
+    // Navigate to a specific match index, changing page if necessary
+    const navigateToMatch = useCallback((index, matchesToUse) => {
+        if (!matchesToUse || matchesToUse.length === 0 || index < 0 || index >= matchesToUse.length) {
+            console.log("Invalid index or no matches for navigateToMatch");
+            setCurrentResultIndex(-1);
+            clearSearchHighlights(); // Clear visuals if navigation fails
+            return;
+        }
+
+        const match = matchesToUse[index];
+        console.log(`Navigating to match ${index + 1}/${matchesToUse.length} on page ${match.pageNumber}`);
+        
+        setCurrentResultIndex(index); // Update the index state immediately for UI feedback
+
+        if (match.pageNumber !== currentPage) {
+            console.log(`Match is on page ${match.pageNumber}, changing page from ${currentPage}`);
+            // Change the page state. The highlighting will happen in the useEffect hook watching currentPage.
+            handlePageChange(match.pageNumber);
+            // Highlighting will be triggered by the page change effect
+        } else {
+            console.log(`Match is on the current page (${currentPage}). Highlighting directly.`);
+            // Match is on the current page, highlight immediately
+            highlightSearchResult(match, index, matchesToUse);
+        }
+    }, [currentPage, handlePageChange, highlightSearchResult, clearSearchHighlights]); // Add dependencies
+
+    // Perform search across the entire document
+    const searchEntireDocument = useCallback(async () => {
+        console.log('Searching entire document for:', searchQuery, 'Case sensitive:', matchCase);
         if (!pdf || !searchQuery.trim()) {
             clearSearchHighlights();
+            setSearchResults([]);
+            setCurrentResultIndex(-1);
             return;
         }
 
         setIsSearching(true);
-        
+        clearSearchHighlights();
+        setSearchResults([]); 
+        setCurrentResultIndex(-1);
+
         try {
-            // Get the text content of the current page
-            const page = await pdf.getPage(currentPage);
-            const textContent = await page.getTextContent();
-            
-            // Clear previous highlights
-            clearSearchHighlights();
-            
-            // Get text layer
-            const textLayer = textLayerRef.current;
-            if (!textLayer) {
-                setIsSearching(false);
-                return;
+            const allPagesData = await fetchAllPagesText();
+            if (allPagesData.length === 0 && pdf.numPages > 0) {
+                 console.error("Failed to fetch text content for any page.");
+                 throw new Error("Could not fetch text content");
             }
-            
-            // Get all text items in the text layer
-            const textItems = Array.from(textLayer.querySelectorAll('.pdf-text'));
+            console.log(`Fetched text data for ${allPagesData.length} pages.`);
+
             const matches = [];
-            
-            // Simple search through visible text items
             const term = matchCase ? searchQuery : searchQuery.toLowerCase();
-            
-            for (let i = 0; i < textItems.length; i++) {
-                const item = textItems[i];
-                const text = item.textContent;
-                const searchableText = matchCase ? text : text.toLowerCase();
-                
-                // Check if this text item contains the search term
-                let startIndex = 0;
-                let foundIndex;
-                
-                while ((foundIndex = searchableText.indexOf(term, startIndex)) !== -1) {
-                    matches.push({
-                        element: item,
-                        text: text.substr(foundIndex, term.length),
-                        startIndex: foundIndex,
-                        endIndex: foundIndex + term.length,
-                        rect: item.getBoundingClientRect()
-                    });
-                    
-                    startIndex = foundIndex + 1;
-                }
-            }
-            
-            setSearchResults(matches);
-            
-            // Highlight and select the first match if available
+
+            allPagesData.forEach(pageData => {
+                const { pageNumber, textContent } = pageData;
+                textContent.items.forEach((item, itemIndex) => {
+                    const text = item.str;
+                    if (!text) return;
+                    const searchableText = matchCase ? text : text.toLowerCase();
+
+                    let startIndex = 0;
+                    let foundIndex;
+                    while ((foundIndex = searchableText.indexOf(term, startIndex)) !== -1) {
+                        matches.push({
+                            pageNumber: pageNumber,
+                            itemIndex: itemIndex, 
+                            text: text.substring(foundIndex, foundIndex + term.length),
+                            fullItemText: text, 
+                            startIndex: foundIndex, 
+                        });
+                        startIndex = foundIndex + 1;
+                    }
+                });
+            });
+
+            console.log(`Found ${matches.length} total matches for "${searchQuery}" across all pages.`);
+            setSearchResults(matches); // Set the state with ALL matches
+
             if (matches.length > 0) {
-                highlightSearchResult(matches[0], 0);
+                navigateToMatch(0, matches); // Navigate to the first match
+                console.log('Navigating to first match after search.');
             } else {
-                setCurrentResultIndex(-1);
+                setCurrentResultIndex(-1); // Ensure index is -1 if no matches
+                console.log('No matches found in the document.');
+                clearSearchHighlights(); // Clear any lingering visual highlights
             }
         } catch (error) {
-            console.error('Error searching PDF:', error);
+            console.error('Error searching entire PDF:', error);
+            setSearchResults([]);
+            setCurrentResultIndex(-1);
         } finally {
             setIsSearching(false);
         }
-    }, [pdf, searchQuery, currentPage, matchCase, clearSearchHighlights]);
-
-    // Highlight a search result in the text layer
-    const highlightSearchResult = useCallback((result, index) => {
-        // Clear previous highlights first to ensure we're starting fresh
-        clearSearchHighlights();
-        
-        // Mark all matching elements with highlights
-        searchResults.forEach((match, i) => {
-            const item = match.element;
-            const text = item.textContent;
-            const foundIndex = match.startIndex;
-            
-            // Create parts: before match, match, after match
-            const beforeMatch = text.substring(0, foundIndex);
-            const matchText = text.substring(foundIndex, foundIndex + match.text.length);
-            const afterMatch = text.substring(foundIndex + match.text.length);
-            
-            // Replace the content with highlighted version
-            item.innerHTML = '';
-            
-            if (beforeMatch) {
-                item.appendChild(document.createTextNode(beforeMatch));
-            }
-            
-            const highlightSpan = document.createElement('span');
-            highlightSpan.className = i === index ? 'search-highlight current-match' : 'search-highlight';
-            highlightSpan.textContent = matchText;
-            item.appendChild(highlightSpan);
-            
-            if (afterMatch) {
-                item.appendChild(document.createTextNode(afterMatch));
-            }
-        });
-        
-        // Scroll the current result into view
-        if (searchResults.length > 0 && index >= 0) {
-            const currentHighlight = document.querySelector('.current-match');
-            if (currentHighlight) {
-                const container = document.querySelector('.pdf-viewer');
-                if (container) {
-                    const containerRect = container.getBoundingClientRect();
-                    const highlightRect = currentHighlight.getBoundingClientRect();
-                    
-                    // Calculate position to ensure the highlight is visible in the viewport
-                    const scrollTop = container.scrollTop + highlightRect.top - containerRect.top - (containerRect.height / 2);
-                    
-                    container.scrollTo({
-                        top: scrollTop,
-                        behavior: 'smooth'
-                    });
-                }
-            }
-        }
-        
-        setCurrentResultIndex(index);
-    }, [searchResults, clearSearchHighlights]);
+    }, [pdf, searchQuery, matchCase, clearSearchHighlights, fetchAllPagesText, navigateToMatch]); // Added navigateToMatch dependency
 
     // Navigate to next or previous search result
     const navigateSearchResult = useCallback((direction) => {
-        if (searchResults.length === 0) return;
+        if (searchResults.length === 0) {
+            console.log("Navigate search result called with no results.");
+            return;
+        }
         
         let newIndex;
         if (direction === 'next') {
             newIndex = (currentResultIndex + 1) % searchResults.length;
         } else {
-            newIndex = currentResultIndex <= 0 ? searchResults.length - 1 : currentResultIndex - 1;
+            // Handle wrapping correctly for previous
+            newIndex = (currentResultIndex - 1 + searchResults.length) % searchResults.length;
         }
         
-        highlightSearchResult(searchResults[newIndex], newIndex);
-    }, [searchResults, currentResultIndex, highlightSearchResult]);
+        console.log(`Navigating search results: direction=${direction}, newIndex=${newIndex}`);
+        navigateToMatch(newIndex, searchResults); // Use the unified navigation function
+    }, [searchResults, currentResultIndex, navigateToMatch]); // Added navigateToMatch dependency
 
-    // Update search when query changes
+    // Effect to handle highlighting *after* a page change initiated by search navigation
     useEffect(() => {
-        if (searchVisible && searchQuery.trim()) {
-            const timer = setTimeout(() => {
-                searchInCurrentPage();
-            }, 300);
-            
-            return () => clearTimeout(timer);
+        // Only run this effect if search results exist and the currentResultIndex is valid
+        if (searchResults.length > 0 && currentResultIndex >= 0) {
+            const targetMatch = searchResults[currentResultIndex];
+            // If the target match is on the *now* current page, highlight it
+            if (targetMatch.pageNumber === currentPage) {
+                // Add a delay to allow page transition animation to potentially finish
+                const highlightDelay = 200; // ms delay (adjust if needed)
+                console.log(`Scheduling highlight for match ${currentResultIndex + 1} on page ${currentPage} after ${highlightDelay}ms delay.`);
+                
+                const timerId = setTimeout(() => {
+                    console.log(`Executing delayed highlight for match ${currentResultIndex + 1} on page ${currentPage}.`);
+                    // Ensure the component hasn't unmounted or state changed drastically
+                    if (pdf && searchResults.length > 0 && currentResultIndex >= 0 && searchResults[currentResultIndex]?.pageNumber === currentPage) {
+                        highlightSearchResult(targetMatch, currentResultIndex, searchResults);
+                    }
+                }, highlightDelay);
+
+                // Cleanup function for the timeout if dependencies change before it fires
+                return () => clearTimeout(timerId);
+            }
         }
-    }, [searchQuery, currentPage, matchCase, searchVisible, searchInCurrentPage]);
+        // Intentionally not clearing highlights here, as page change implies a new context
+    }, [pdf, currentPage, searchResults, currentResultIndex, highlightSearchResult]); // Added pdf dependency for safety check
+
+    // Update the useEffect hook that triggers the search based on query changes
+    useEffect(() => {
+        // Debounced search initiation
+        const handler = setTimeout(() => {
+            if (searchQuery.trim().length > 0 && pdf) {
+                console.log("Search trigger effect running due to query/pdf/matchCase change.");
+                searchEntireDocument(); // Call the search function
+            } else {
+                // If query is cleared, reset everything
+                console.log("Search trigger effect clearing results due to empty query.");
+                clearSearchHighlights();
+                setSearchResults([]);
+                setCurrentResultIndex(-1);
+            }
+        }, 300); // 300ms debounce
+
+        return () => {
+            clearTimeout(handler);
+        };
+    // Only depend on the actual search inputs. The functions called inside 
+    // will use their latest versions due to useCallback.
+    }, [searchQuery, pdf, matchCase]); // <-- CORRECTED DEPENDENCIES
 
     // Add event listener for search keyboard shortcut
     useEffect(() => {
@@ -1052,6 +1345,55 @@ export function PdfViewer() {
         };
     }, [menuRef]);
 
+    // Handle navigation to library
+    const handleLibraryClick = useCallback(() => {
+        navigate('/');
+    }, [navigate]);
+
+    // Add a function to handle the explain button click
+    const handleExplainSelection = useCallback(() => {
+        if (currentSelection && selectedText) {
+            // Temporarily highlight the selected text with a special "explain" color
+            const explainHighlight = {
+                ...currentSelection,
+                color: 'rgba(66, 135, 245, 0.4)', // Brighter blue color for explain highlights
+                id: 'explain-temp-' + Date.now(),
+                isTemporary: true,  // Mark as temporary
+                isExplain: true,    // Mark as an explain highlight
+                expireAt: Date.now() + 8000  // Expire after 8 seconds (longer duration)
+            };
+            
+            // Add a pulsing effect class to the explain highlight
+            setTimeout(() => {
+                const explainElements = document.querySelectorAll(`.highlight[data-highlight-id="${explainHighlight.id}"]`);
+                explainElements.forEach(el => {
+                    el.classList.add('explain-pulse');
+                });
+            }, 100);
+            
+            // Add to highlights array
+            setHighlights(prev => [...prev, explainHighlight]);
+            
+            // Close the selection menu
+            setMenuPosition(null);
+            
+            // Send the selection to the chat window for explanation
+            // This will abort any previous chat stream that was in progress
+            if (chatWindowRef.current) {
+                chatWindowRef.current.explainSelection(selectedText);
+            }
+            
+            // Clear the current selection
+            setCurrentSelection(null);
+            setSelectedText('');
+            
+            // Remove the temporary highlight after 8 seconds
+            setTimeout(() => {
+                setHighlights(prev => prev.filter(h => h.id !== explainHighlight.id));
+            }, 8000);
+        }
+    }, [currentSelection, selectedText]);
+
     return (
         <div className="pdf-viewer-page">
             <div className="pdf-viewer-container">
@@ -1068,10 +1410,15 @@ export function PdfViewer() {
                         // Don't auto-hide when mouse leaves, let scroll detection handle it
                     }}
                     style={{
-                        left: '35%',
+                        left: '32%',
                         transform: 'translateX(-50%)'
                     }}
                 >
+                    <div className="library-button" onClick={handleLibraryClick}>
+                        <span className="material-icons">menu_book</span>
+                        <span>Library</span>
+                    </div>
+                    
                     <div className="zoom-controls">
                         <button onClick={() => handleZoom(-1)} disabled={zoomIndex === 0}>
                             <span className="material-icons">remove</span>
@@ -1128,6 +1475,26 @@ export function PdfViewer() {
                     >
                         <span className="material-icons">search</span>
                     </button>
+                    
+                    <div className="pdf-highlight">
+                        <button
+                            className="highlight-button"
+                            onClick={() => setShowHighlightPalette(!showHighlightPalette)}
+                            title="Highlight text"
+                        >
+                            <span className="material-icons">format_color_text</span>
+                        </button>
+                        {showHighlightPalette && (
+                            <div className="highlight-color-palette">
+                                <input 
+                                    type="color" 
+                                    className="color-picker"
+                                    onChange={(e) => handleHighlightSelection(e.target.value)}
+                                    defaultValue="#FFFF00"
+                                />
+                            </div>
+                        )}
+                    </div>
                     
                     {currentSectionTitle && (
                         <div className="current-section-title" title={currentSectionTitle}>
@@ -1311,6 +1678,7 @@ export function PdfViewer() {
                     >
                         <div className="right-panel">
                             <ChatWindow
+                                ref={chatWindowRef}
                                 initialContext={selectedText}
                                 onAddNote={handleAddNote}
                                 currentSelection={currentSelection}
@@ -1323,11 +1691,8 @@ export function PdfViewer() {
             </div>
             {menuPosition && selectedText && (
                 <div className="text-selection-menu" ref={menuRef}>
-                     <button className="selection-menu-button explain-button" onClick={() => { 
-                          const note = prompt('Enter explanation for the selected text:'); 
-                          if (note) { handleAddNote(note); }
-                     }}>
-                         <span className="material-icons">note_add</span>
+                     <button className="selection-menu-button explain-button" onClick={handleExplainSelection}>
+                         <span className="material-icons">psychology</span>
                          <span>Explain</span>
                      </button>
                      <button className="selection-menu-button highlight-button" onClick={() => setShowHighlightPalette(true)}>
@@ -1800,6 +2165,112 @@ export function PdfViewer() {
                 
                 .highlight-color:hover {
                     transform: scale(1.15);
+                }
+
+                /* Library button styles */
+                .library-button {
+                    display: flex;
+                    align-items: center;
+                    background-color:rgb(120, 171, 253);
+                    background: linear-gradient(45deg, #60a5fa,rgb(112, 165, 249));
+                    border: none;
+                    border-radius: 24px;
+                    color: white;
+                    padding: 8px 15px;
+                    font-size: 14px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+                    letter-spacing: 0.5px;
+                    position: relative;
+                    overflow: hidden;
+                    margin-right: 10px;
+                }
+
+                .library-button:hover {
+                    background: linear-gradient(45deg, #3b82f6,rgb(52, 111, 240));
+                    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+                    transform: translateY(-2px);
+                }
+
+                .library-button:active {
+                    background-color:rgb(46, 106, 237);
+                    transform: translateY(0);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+
+                .library-button span {
+                    position: relative;
+                    z-index: 1;
+                    color: white;
+                }
+
+                .library-button .material-icons {
+                    margin-right: 8px;
+                    color: white;
+                    font-size: 18px;
+                }
+
+                /* Highlight container and delete button styling */
+                .highlight-container {
+                    position: absolute;
+                }
+                
+                .highlight-container:hover .highlight-delete-button {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                
+                .highlight-delete-button {
+                    position: absolute;
+                    top: -10px;
+                    right: -10px;
+                    width: 20px;
+                    height: 20px;
+                    background-color: #ff5252;
+                    color: white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    z-index: 100;
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                    opacity: 0.3;
+                    transform: scale(0.8);
+                    transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+                    line-height: 1;
+                    user-select: none;
+                    border: 1.5px solid white;
+                }
+                
+                .highlight-delete-button:hover {
+                    background-color: #ff1744;
+                    transform: scale(1.1) !important;
+                }
+
+                /* Add animation for explain highlight */
+                @keyframes explain-pulse {
+                    0% {
+                        box-shadow: 0 0 0 0 rgba(66, 135, 245, 0.6);
+                        background-color: rgba(66, 135, 245, 0.4);
+                    }
+                    70% {
+                        box-shadow: 0 0 0 8px rgba(66, 135, 245, 0);
+                        background-color: rgba(66, 135, 245, 0.6);
+                    }
+                    100% {
+                        box-shadow: 0 0 0 0 rgba(66, 135, 245, 0);
+                        background-color: rgba(66, 135, 245, 0.4);
+                    }
+                }
+                
+                .explain-pulse {
+                    animation: explain-pulse 1.5s infinite;
+                    border-radius: 3px;
                 }
             `}</style>
         </div>

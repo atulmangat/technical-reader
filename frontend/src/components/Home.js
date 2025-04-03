@@ -17,9 +17,11 @@ export function Home() {
     const [pdfToDelete, setPdfToDelete] = useState(null);
     const [editingTitleId, setEditingTitleId] = useState(null);
     const [newTitle, setNewTitle] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
     const titleInputRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const fetchPdfs = useCallback(async () => {
         try {
@@ -87,6 +89,43 @@ export function Home() {
         } finally {
             setUploading(false);
         }
+    };
+
+    // New drag and drop handlers
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type !== 'application/pdf') {
+                alert('Please upload a PDF file');
+                return;
+            }
+            
+            // Trigger the file input onChange handler with the dropped file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInputRef.current.files = dataTransfer.files;
+            
+            // Manually trigger the change event
+            const event = new Event('change', { bubbles: true });
+            fileInputRef.current.dispatchEvent(event);
+        }
+    };
+
+    const handleButtonClick = () => {
+        fileInputRef.current.click();
     };
 
     const toggleMenu = (id) => {
@@ -275,129 +314,191 @@ export function Home() {
     return (
         <div className="home-page" onClick={handleClickOutside}>
             <Navbar />
+            <div className="hero-section">
+                <div className="hero-content">
+                    <h1 className="hero-title">Your Assistant for PDFs</h1>
+                    <p className="hero-description">
+                        Upload your documents and get instant AI-powered insights, summaries, and answers
+                    </p>
+                </div>
+            </div>
+            
             <div className="home-container">
-                <div className="home-header">
-                    <h1 className="library-heading">Your Library</h1>
-                    <label className="upload-button">
-                        <span className="material-icons">upload_file</span>
-                        <span>{uploading ? 'Uploading...' : 'Upload PDF'}</span>
-                        <input
-                            type="file"
-                            accept="application/pdf"
-                            onChange={handleFileUpload}
-                            style={{ display: 'none' }}
+                <div 
+                    className={`pdf-drop-area ${isDragging ? 'dragging' : ''} ${uploading ? 'uploading' : ''}`} 
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={handleButtonClick}
+                >
+                    <div className="upload-content">
+                        <span className="material-icons upload-icon">
+                            {uploading ? 'hourglass_top' : 'upload_file'}
+                        </span>
+                        <h2 className="upload-heading">
+                            {uploading ? 'Uploading...' : 'Upload your PDF'}
+                        </h2>
+                        <p className="upload-text">
+                            {uploading 
+                                ? 'Please wait while we process your file...' 
+                                : 'Drag and drop your file here or click to browse'
+                            }
+                        </p>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileUpload} 
+                            accept="application/pdf" 
+                            className="file-input"
                             disabled={uploading}
                         />
-                    </label>
+                    </div>
                 </div>
                 
-                {pdfs.length === 0 ? (
-                    <div className="empty-library">
-                        <p>Your library is empty. Upload a PDF to get started!</p>
+                <div className="features-section">
+                    <div className="feature-item">
+                        <span className="material-icons feature-icon">question_answer</span>
+                        <h3>Ask Questions</h3>
+                        <p>Get instant answers from your PDFs with AI assistance</p>
                     </div>
-                ) : (
-                    <div className="pdf-grid">
-                        {pdfs.map(pdf => (
-                            <div className="pdf-card-container" key={pdf.id}>
-                                <Link 
-                                    to={`/pdf/${pdf.id}`} 
-                                    className="pdf-card"
-                                    onClick={(e) => {
-                                        // Prevent navigation when in edit mode
-                                        if (editingTitleId === pdf.id) {
-                                            e.preventDefault();
-                                        }
-                                    }}
-                                >
-                                    <div className="pdf-book">
-                                        <div className="book-spine">
-                                            <span className="book-title">{pdf.title}</span>
-                                        </div>
-                                        <div className="book-cover">
-                                            {pdf.thumbnail_path ? (
-                                                <div className="pdf-thumbnail">
-                                                    <ThumbnailImage pdfId={pdf.id} title={pdf.title} />
-                                                </div>
-                                            ) : (
-                                                <div className="pdf-thumbnail-placeholder">
-                                                    <span className="material-icons" aria-label="PDF document">
-                                                        picture_as_pdf
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <div className="pdf-info">
-                                                {editingTitleId === pdf.id ? (
-                                                    <div className="title-edit-container">
-                                                        <input
-                                                            ref={titleInputRef}
-                                                            type="text"
-                                                            className="title-edit-input"
-                                                            value={newTitle}
-                                                            onChange={(e) => setNewTitle(e.target.value)}
-                                                            onKeyDown={(e) => handleTitleKeyDown(e, pdf.id)}
-                                                            onBlur={() => confirmRename(pdf.id)}
-                                                        />
+                    <div className="feature-item">
+                        <span className="material-icons feature-icon">auto_stories</span>
+                        <h3>Easy Reading</h3>
+                        <p>Smooth navigation and reader-friendly interface</p>
+                    </div>
+                    <div className="feature-item">
+                        <span className="material-icons feature-icon">highlight_alt</span>
+                        <h3>Highlight</h3>
+                        <p>Mark important passages and add your own notes</p>
+                    </div>
+                </div>
+
+                {pdfs.length > 0 && (
+                    <div className="library-section">
+                        <div className="section-header">
+                            <h2 className="section-title">Your Library</h2>
+                            <p className="section-subtitle">{pdfs.length} document{pdfs.length !== 1 ? 's' : ''} in your collection</p>
+                        </div>
+                        
+                        <div className="pdf-grid">
+                            {pdfs.map(pdf => (
+                                <div className="pdf-card-container" key={pdf.id}>
+                                    <Link 
+                                        to={`/pdf/${pdf.id}`} 
+                                        className="pdf-card"
+                                        onClick={(e) => {
+                                            if (editingTitleId === pdf.id) {
+                                                e.preventDefault();
+                                            }
+                                        }}
+                                    >
+                                        <div className="pdf-book">
+                                            <div className="book-cover">
+                                                {pdf.thumbnail_path ? (
+                                                    <div className="pdf-thumbnail">
+                                                        <ThumbnailImage pdfId={pdf.id} title={pdf.title} />
                                                     </div>
                                                 ) : (
-                                                    <h3 
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleRename(pdf, e);
-                                                        }}
-                                                        title="Click to rename"
-                                                    >
-                                                        {pdf.title}
-                                                    </h3>
-                                                )}
-                                                <div className="pdf-info-footer">
-                                                    <p>Pages: {pdf.total_pages}</p>
-                                                    <button 
-                                                        className="pdf-menu-button" 
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            toggleMenu(pdf.id);
-                                                        }}
-                                                        aria-label="PDF options"
-                                                    >
-                                                        <span className="material-icons">more_vert</span>
-                                                    </button>
-                                                </div>
-                                                {activeMenuId === pdf.id && (
-                                                    <div className="pdf-menu pdf-menu-bottom">
-                                                        <button 
-                                                            className="pdf-menu-item" 
-                                                            onClick={(e) => handleShowInfo(pdf, e)}
-                                                        >
-                                                            <span className="material-icons">info</span>
-                                                            Info
-                                                        </button>
-                                                        <button 
-                                                            className="pdf-menu-item" 
-                                                            onClick={(e) => handleRename(pdf, e)}
-                                                        >
-                                                            <span className="material-icons">edit</span>
-                                                            Rename
-                                                        </button>
-                                                        <button 
-                                                            className="pdf-menu-item pdf-menu-item-delete" 
-                                                            onClick={(e) => handleDelete(pdf.id, e)}
-                                                        >
-                                                            <span className="material-icons">delete</span>
-                                                            Delete
-                                                        </button>
+                                                    <div className="pdf-thumbnail-placeholder">
+                                                        <span className="material-icons" aria-label="PDF document">
+                                                            picture_as_pdf
+                                                        </span>
                                                     </div>
                                                 )}
+                                                <div className="pdf-info">
+                                                    {editingTitleId === pdf.id ? (
+                                                        <div className="title-edit-container">
+                                                            <input
+                                                                ref={titleInputRef}
+                                                                type="text"
+                                                                className="title-edit-input"
+                                                                value={newTitle}
+                                                                onChange={(e) => setNewTitle(e.target.value)}
+                                                                onKeyDown={(e) => handleTitleKeyDown(e, pdf.id)}
+                                                                onBlur={() => confirmRename(pdf.id)}
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <h3 
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                handleRename(pdf, e);
+                                                            }}
+                                                            title="Click to rename"
+                                                        >
+                                                            {pdf.title}
+                                                        </h3>
+                                                    )}
+                                                    <div className="pdf-info-footer">
+                                                        <p>Pages: {pdf.total_pages}</p>
+                                                        <button 
+                                                            className="pdf-menu-button" 
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                toggleMenu(pdf.id);
+                                                            }}
+                                                            aria-label="PDF options"
+                                                        >
+                                                            <span className="material-icons">more_vert</span>
+                                                        </button>
+                                                    </div>
+                                                    {activeMenuId === pdf.id && (
+                                                        <div className="pdf-menu pdf-menu-bottom">
+                                                            <button 
+                                                                className="pdf-menu-item" 
+                                                                onClick={(e) => handleShowInfo(pdf, e)}
+                                                            >
+                                                                <span className="material-icons">info</span>
+                                                                Info
+                                                            </button>
+                                                            <button 
+                                                                className="pdf-menu-item" 
+                                                                onClick={(e) => handleRename(pdf, e)}
+                                                            >
+                                                                <span className="material-icons">edit</span>
+                                                                Rename
+                                                            </button>
+                                                            <button 
+                                                                className="pdf-menu-item pdf-menu-item-delete" 
+                                                                onClick={(e) => handleDelete(pdf.id, e)}
+                                                            >
+                                                                <span className="material-icons">delete</span>
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </Link>
-                            </div>
-                        ))}
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                {pdfs.length === 0 && !loading && (
+                    <div className="empty-library">
+                        <span className="material-icons empty-icon">library_books</span>
+                        <h3>Your library is empty</h3>
+                        <p>Upload a PDF to get started with your document collection.</p>
                     </div>
                 )}
             </div>
+            
+            <footer className="home-footer">
+                <div className="footer-content">
+                    <p>© 2023 Tech Reader. All rights reserved.</p>
+                    <div className="footer-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Help</a>
+                    </div>
+                </div>
+            </footer>
+            
             {showModal && <Modal />}
         </div>
     );

@@ -1,0 +1,61 @@
+.pdf-reader-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+}
+
+.pdf-reader-title {
+  font-size: 24px;
+  margin: 0 0 20px 0;
+  color: #1e40af;
+  text-align: center;
+  font-weight: 600;
+}
+
+.pdf-reader-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 120px); /* Adjust this based on your layout */
+}
+
+.pdf-reader-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.new-pdf-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.new-pdf-button:hover {
+  background-color: #2563eb;
+}
+
+@media (max-width: 768px) {
+  .pdf-reader-container {
+    padding: 15px;
+  }
+  
+  .pdf-reader-title {
+    font-size: 20px;
+    margin-bottom: 15px;
+  }
+  
+  .pdf-reader-content {
+    height: calc(100vh - 100px);
+  }
+} 
