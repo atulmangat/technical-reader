@@ -89,7 +89,6 @@ class EmbeddingBatcher:
         if not batch:
             return 0, 0
             
-        batch_size = len(batch)
         processed = 0
         cache_hits = 0
         

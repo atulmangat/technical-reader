@@ -10,6 +10,8 @@ from ...rag.llms.client import stream_llm
 from ...rag.index.store.embeddings import get_vector_db, VectorDB
 from ...rag.tools.content import get_page_content
 from ...utils.auth import get_current_user
+from ...rag.tools.summary import get_key_sentences_for_summary
+from ...rag.llms.prompts import generate_welcome_chat_prompt
 from ...models.user import User
 import logging
 import json
@@ -27,7 +29,7 @@ class ChatRequest(BaseModel):
     context: list[str] = []
     conversation_history: List[Dict[str, str]] = []
     current_page: int = None  # Current page number in the PDF
-
+    welcome_chat: bool = False  # Flag to determine whether to provide a welcome message
 
 
 @router.post("/{pdf_id}/chat")
@@ -68,7 +70,7 @@ async def chat(
             # Get content from current, previous, and next pages
             try:        
                 # Use get_page_content to retrieve the page content
-                page_content = get_page_content(pdf_id, [request.current_page], surrounding_pages=2, db=db)
+                page_content = get_page_content(pdf_id, [request.current_page], surrounding_pages=1, db=db)
                 if page_content:
                     context += "\n\n" + "\n\n".join(page_content)
             except Exception as e:
@@ -96,7 +98,23 @@ async def chat(
                     else:
                         # Otherwise, format it as SSE data
                         yield f"data: {json.dumps({'response': chunk})}\n\n".encode()
-            else:
+            elif request.welcome_chat:
+                
+                summary = get_key_sentences_for_summary(pdf_id, db)
+                prompt = generate_welcome_chat_prompt(
+                    user_query=request.query,
+                    context=summary,
+                    conversation_history=request.conversation_history,
+                    detailed_response=request.detailed_response
+                )
+                async for chunk in stream_llm(prompt=prompt, llm_type=request.model):
+                    if chunk.startswith("data:"):
+                        # If the chunk is already formatted as SSE data, just encode it
+                        yield chunk.encode()
+                    else:
+                        # Otherwise, format it as SSE data
+                        yield f"data: {json.dumps({'response': chunk})}\n\n".encode()
+            else:    
                 # Direct LLM call without tools (streaming version)
                 # Convert messages to conversation history format
                 prompt = generate_no_tools_prompt(

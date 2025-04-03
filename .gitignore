@@ -2,23 +2,80 @@
 venv/
 env/
 ENV/
+.venv/
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
 # Database
 instance/
 *.db
+*.db.backup
 *.sqlite3
 
 # Environment Variables
 .env
+.env.local
+.env.development
+.env.test
+.env.production
 
 # Uploaded files
 uploads/
+backend/uploads/
+backend/thumbnails/
+
+# Log files
+*.log
+logs/
+log/
+backend/pdf_indexing.log
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+.DS_Store
+
+# Frontend build
+frontend/build/
+frontend/dist/
+frontend/node_modules/
+frontend2/node_modules/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Cache
+.cache/
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.lock
+*.pid

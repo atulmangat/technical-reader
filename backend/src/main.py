@@ -1,4 +1,4 @@
-from .routes.v1 import auth, highlights, notes, pdf, rag, users
+from .routes.v1 import auth, highlights, pdf, rag, users
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -50,7 +50,6 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(pdf.router, prefix="/api/pdfs", tags=["PDF Management"])
-app.include_router(notes.router, prefix="/api/pdfs", tags=["Notes"])
 app.include_router(
     highlights.router, prefix="/api/pdfs", tags=["Highlights"]
 )

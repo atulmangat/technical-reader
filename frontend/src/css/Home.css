@@ -103,10 +103,6 @@
     display: block;
 }
 
-.pdf-drop-area:hover .upload-icon {
-    transform: translateY(-5px);
-}
-
 .pdf-drop-area .upload-heading {
     font-size: 1.75rem;
     font-weight: 600;
@@ -150,6 +146,9 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
     text-align: center;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
 }
 
 .feature-item:hover {
@@ -158,10 +157,16 @@
 }
 
 .feature-icon {
-    font-size: 2.5rem;
+    font-size: 4rem;
     color: #3b82f6;
     margin-bottom: 1rem;
     display: block;
+    transition: transform 0.4s ease, color 0.3s ease;
+}
+
+.feature-item:hover .feature-icon {
+    transform: translateY(-10px) scale(1.1);
+    color: #2563eb;
 }
 
 .feature-item h3 {
@@ -169,36 +174,134 @@
     margin: 0 0 0.75rem;
     color: #1a202c;
     font-weight: 600;
+    transition: transform 0.3s ease;
+}
+
+.feature-item:hover h3 {
+    transform: translateY(-5px);
 }
 
 .feature-item p {
     color: #4b5563;
     margin: 0;
     line-height: 1.5;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.feature-item:hover p {
+    transform: translateY(-3px);
+}
+
+.feature-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    background: linear-gradient(to top, rgba(59, 130, 246, 0.05), transparent);
+    transition: height 0.3s ease;
+    z-index: -1;
+}
+
+.feature-item:hover::after {
+    height: 100%;
 }
 
 /* Library Section */
 .library-section {
-    margin-top: 3rem;
+    margin-top: 4rem;
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    scroll-margin-top: 80px; /* For smooth scrolling */
+    animation: fadeInUp 0.8s ease-out;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.library-section:hover {
+    box-shadow: 0 15px 35px rgba(59, 130, 246, 0.15);
+    transform: translateY(-3px);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.library-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
 
 .section-header {
     display: flex;
     flex-direction: column;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    text-align: center;
+    align-items: center;
+}
+
+.section-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    color: white;
+    transform: translateY(0);
+    animation: floatIconInline 3s ease-in-out infinite;
+}
+
+.section-icon .material-icons {
+    font-size: 22px;
+}
+
+@keyframes floatIconInline {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
 }
 
 .section-title {
-    font-size: 1.75rem;
+    font-size: 2.2rem;
     color: #1a202c;
-    font-weight: 600;
-    margin: 0 0 0.5rem;
+    font-weight: 700;
+    margin: 0 0 0.75rem;
+    line-height: 1.2;
+    font-family: 'Quicksand', 'Segoe UI', sans-serif;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
 }
 
 .section-subtitle {
-    color: #6b7280;
+    color: #4b5563;
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.2rem;
+    max-width: 600px;
+    line-height: 1.5;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    opacity: 0.9;
 }
 
 /* PDF Grid */
@@ -762,4 +865,8 @@
 .title-edit-input:focus {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
     border-color: #2563eb;
+}
+
+.pdf-drop-area:hover .upload-icon {
+    transform: translateY(-5px);
 }

@@ -21,6 +21,7 @@ highlights_tool = ToolInterface(
 
 # Set the injectable parameters for this tool
 highlights_tool.set_injectable_params({"db"})
+highlights_tool.set_injectable_params({"pdf_id"})
 
 def _get_highlights(pdf_id: int, db: Session) -> List[Dict[str, Any]]:
     """
@@ -52,7 +53,7 @@ def get_all_highlights(pdf_id: int, db: Session = None) -> List[Dict[str, Any]]:
     Get highlights for a PDF
     
     Args:
-        pdf_id: ID of the PDF
+        pdf_id: ID of the PDF (injected)
         
     Returns:
         List of highlights with page number, text, and color
@@ -67,7 +68,7 @@ def get_highlights_by_page(pdf_id: int, page_numbers: List[int], db: Session = N
     Get highlights for specific pages in a PDF
     
     Args:
-        pdf_id: ID of the PDF
+        pdf_id: ID of the PDF (injected)
         page_numbers: List of page numbers to get highlights for
         limit: Maximum number of highlights to return
         
@@ -103,7 +104,7 @@ def get_highlights_by_keyword(pdf_id: int, keywords: List[str], db: Session = No
     Get highlights containing specific keywords in a PDF
     
     Args:
-        pdf_id: ID of the PDF
+        pdf_id: ID of the PDF (injected)
         keywords: List of keywords to search for
         limit: Maximum number of highlights to return
         

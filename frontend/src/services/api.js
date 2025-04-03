@@ -119,7 +119,7 @@ export const highlightsAPI = {
 // RAG API
 export const ragAPI = {
   query: (pdfId, question, options = {}) => {
-    const { conversation_history = [], selected_text = '', use_tools = true, detailed_response = false, current_page = null } = options;
+    const { conversation_history = [], selected_text = '', use_tools = true, detailed_response = false, current_page = null, welcome_chat = false } = options;
     
     // Regular, non-streaming version (used as a fallback)
     const regularRequest = () => {
@@ -129,7 +129,8 @@ export const ragAPI = {
         context: selected_text ? [selected_text] : [],
         use_tools,
         detailed_response,
-        current_page
+        current_page,
+        welcome_chat
       });
     };
     
@@ -157,7 +158,8 @@ export const ragAPI = {
           context: selected_text ? [selected_text] : [],
           use_tools,
           detailed_response,
-          current_page
+          current_page,
+          welcome_chat
         })
       };
       

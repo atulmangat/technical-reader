@@ -82,7 +82,6 @@ def extract_pages_after_term(doc, terms, num_pages=20):
         str: Extracted text or a message if no term is found.
     """
     total_pages = len(doc)
-    print(f"Total pages: {total_pages}")
     for page_num in range(total_pages):
         page = doc[page_num]
         text = page.get_text()
@@ -176,7 +175,6 @@ def parse_table_of_contents(pdf_id: str, db: Session = None) -> List[TableOfCont
         pdf.table_of_contents = response
         db.commit()
         db.refresh(pdf)
-        print(f"Response: {response}")
         chapters_data = json.loads(response).get("chapters", [])
         # Validate the structure matches our expected format
         validated_chapters = []
@@ -235,3 +233,5 @@ def parse_table_of_contents(pdf_id: str, db: Session = None) -> List[TableOfCont
             return []
 
 
+if __name__ == "__main__":
+    parse_table_of_contents("pdf123")

@@ -26,7 +26,6 @@ class User(Base):
 
     # Relationships
     pdfs = relationship("PDF", backref="owner", lazy="selectin")
-    notes = relationship("Note", back_populates="user")
     highlights = relationship("Highlight", back_populates="user")
 
     def set_password(self, password):

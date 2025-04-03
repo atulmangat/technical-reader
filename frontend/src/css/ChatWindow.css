@@ -1781,4 +1781,227 @@ input:checked + .toggle-slider:before {
     background-color: #f5f9ff;
 }
 
+/* Summary tool styles */
+.summary-tool {
+    margin: 20px 15px 5px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    border: 1px solid #e0e4e8;
+    animation: fade-in 0.3s ease-in-out;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.summary-tool-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #f0f9ff;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.summary-tool-header .material-icons {
+    color: #3b82f6;
+    font-size: 20px;
+    margin-right: 10px;
+}
+
+.summary-tool-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e3a8a;
+}
+
+.summary-questions {
+    padding: 8px;
+}
+
+.summary-question {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+}
+
+.summary-question:last-child {
+    margin-bottom: 0;
+}
+
+.summary-question:hover {
+    background-color: #f0f9ff;
+    border-color: #bfdbfe;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+    transform: translateY(-1px);
+}
+
+.question-icon {
+    color: #3b82f6;
+    font-size: 18px;
+    margin-right: 12px;
+    margin-top: 2px;
+}
+
+.summary-question p {
+    margin: 0;
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.4;
+    font-weight: 500;
+    flex: 1;
+}
+
+.summary-question:hover p {
+    color: #1e40af;
+}
+
+/* Document Assistant icon hover effect */
+.assistant-title .material-icons {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    animation: subtle-pulse 3s infinite alternate;
+    transform-origin: center;
+}
+
+@keyframes subtle-pulse {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.05);
+    }
+}
+
+.assistant-title:hover .material-icons {
+    color: #1e40af !important; /* deeper blue on hover */
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 5px rgba(66, 133, 244, 0.7));
+    animation: pulse-icon 1.5s infinite alternate;
+}
+
+/* Create shine effect on hover */
+.assistant-title .material-icons::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.assistant-title:hover .material-icons::after {
+    animation: icon-shine 1.5s infinite;
+    opacity: 1;
+}
+
+/* Document Assistant heading styles */
+.assistant-title h2 {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.assistant-title:hover h2 {
+    color: #1e40af !important;
+    text-shadow: 0 0 3px rgba(66, 133, 244, 0.4);
+}
+
+.assistant-title h2::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.assistant-title:hover h2::after {
+    animation: icon-shine 1.5s infinite;
+    animation-delay: 0.1s;
+    opacity: 1;
+}
+
+/* Powered by AI text styles */
+.assistant-title span {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.assistant-title:hover span {
+    color: #4285f4 !important;
+    text-shadow: 0 0 2px rgba(66, 133, 244, 0.3);
+}
+
+.assistant-title span::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.assistant-title:hover span::after {
+    animation: icon-shine 1.5s infinite;
+    animation-delay: 0.2s;
+    opacity: 1;
+}
+
+@keyframes pulse-icon {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.15);
+    }
+}
+
+@keyframes icon-shine {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 200%;
+    }
+}
+
 

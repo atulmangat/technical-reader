@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { pdfAPI } from '../services/api';
 import { Navbar } from './Navbar';
@@ -19,9 +19,11 @@ export function Home() {
     const [newTitle, setNewTitle] = useState('');
     const [isDragging, setIsDragging] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
     const { isAuthenticated } = useAuth();
     const titleInputRef = useRef(null);
     const fileInputRef = useRef(null);
+    const libraryRef = useRef(null);
 
     const fetchPdfs = useCallback(async () => {
         try {
@@ -51,6 +53,21 @@ export function Home() {
             fetchPdfs();
         }
     }, [isAuthenticated, fetchPdfs]);
+
+    // Check for library hash in URL on component mount
+    useEffect(() => {
+        if (location.hash === '#library' && pdfs.length > 0) {
+            scrollToLibrary();
+        }
+    }, [location.hash, pdfs]);
+
+    // Function to scroll to library section
+    const scrollToLibrary = () => {
+        const libraryElement = document.getElementById('library');
+        if (libraryElement) {
+            libraryElement.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
 
     const handleFileUpload = async (event) => {
         const file = event.target.files[0];
@@ -332,9 +349,11 @@ export function Home() {
                     onClick={handleButtonClick}
                 >
                     <div className="upload-content">
-                        <span className="material-icons upload-icon">
-                            {uploading ? 'hourglass_top' : 'upload_file'}
-                        </span>
+                        <div className="upload-icon-container">
+                            <span className="material-icons upload-icon">
+                                {uploading ? 'hourglass_top' : 'upload_file'}
+                            </span>
+                        </div>
                         <h2 className="upload-heading">
                             {uploading ? 'Uploading...' : 'Upload your PDF'}
                         </h2>
@@ -374,9 +393,14 @@ export function Home() {
                 </div>
 
                 {pdfs.length > 0 && (
-                    <div className="library-section">
+                    <div className="library-section" id="library">
                         <div className="section-header">
-                            <h2 className="section-title">Your Library</h2>
+                            <h2 className="section-title">
+                                Your Library
+                                <div className="section-icon">
+                                    <span className="material-icons">collections_bookmark</span>
+                                </div>
+                            </h2>
                             <p className="section-subtitle">{pdfs.length} document{pdfs.length !== 1 ? 's' : ''} in your collection</p>
                         </div>
                         

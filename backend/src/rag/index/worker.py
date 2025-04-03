@@ -238,6 +238,7 @@ class PDFEmbeddingPipeline:
     def __init__(self, enable_monitor=True, monitor_interval=10):
         self.queue = PDFQueue()
         self.embedding_batcher = EmbeddingBatcher()
+        self.embedding_batcher.set_num_threads(config.embedding_config.num_threads)
         self.vector_db = VectorDB()
         self.worker = PDFWorker(self.queue, self.embedding_batcher, self.vector_db)
         self.logger = logging.getLogger(__name__)

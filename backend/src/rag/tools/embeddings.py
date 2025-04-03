@@ -29,6 +29,7 @@ embeddings_tool = ToolInterface(
 
 # Set the injectable parameters for this tool
 embeddings_tool.set_injectable_params({"vector_db"})
+embeddings_tool.set_injectable_params({"pdf_id"})
 
 @embeddings_tool.register_function
 def search_embeddings(pdf_id: int, query: str, top_k: int = 5, vector_db: VectorDB = None) -> Dict[str, Any]:
@@ -36,7 +37,7 @@ def search_embeddings(pdf_id: int, query: str, top_k: int = 5, vector_db: Vector
     Search for similar content using vector embeddings
     
     Args:
-        pdf_id: ID of the PDF document
+        pdf_id: ID of the PDF document (injected)
         query: Search query text
         top_k: Number of results to return (default: 5)
         

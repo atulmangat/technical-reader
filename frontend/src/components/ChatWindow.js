@@ -12,6 +12,8 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
     const [isStreaming, setIsStreaming] = useState(false);
     const [activeTab, setActiveTab] = useState('document'); // Keep document as the only tab
     const [showTabInfo, setShowTabInfo] = useState(false); // State to track whether to show tab info
+    const [summaryQuestions, setSummaryQuestions] = useState([]); // State for summary questions
+    const [showSummaryTool, setShowSummaryTool] = useState(true); // State to control summary tool visibility
     const chatHistoryRef = useRef(null);
     const [streamController, setStreamController] = useState(null);
     const lastMessageRef = useRef(null); // Reference to the last message for scrolling
@@ -205,22 +207,119 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
         }
     };
 
+    // Function to fetch summary and generate questions
+    const fetchSummaryQuestions = useCallback(async () => {
+        if (!pdfId) return;
+        
+        try {
+            // Use the summary tool to get document summary
+            const response = await ragAPI.query(pdfId, "Summarize this document", {
+                use_tools: true,
+                tool_preferences: ["summary"]
+            });
+            
+            if (response && response.data && response.data.response) {
+                // Generate questions based on the summary
+                const summaryResponse = await ragAPI.query(pdfId, 
+                    "Based on the document summary, generate 3 specific questions a user might want to ask about this document. Format them as a numbered list.", 
+                    { conversation_history: [
+                        { role: "assistant", content: response.data.response }
+                    ]}
+                );
+                
+                if (summaryResponse && summaryResponse.data && summaryResponse.data.response) {
+                    // Parse the numbered list of questions
+                    const questionText = summaryResponse.data.response;
+                    const questionRegex = /\d+\.\s+(.+?)(?=\n\d+\.|\n\n|$)/gs;
+                    const questions = [];
+                    let match;
+                    
+                    while ((match = questionRegex.exec(questionText)) !== null) {
+                        if (match[1].trim()) {
+                            questions.push(match[1].trim());
+                        }
+                    }
+                    
+                    setSummaryQuestions(questions.length > 0 ? questions : [
+                        "Summarize this guide",
+                        "What types of problems can machine learning effectively address?",
+                        "Why is Python considered a suitable language for machine learning?"
+                    ]);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching summary questions:', error);
+            // Set default questions if error occurs
+            setSummaryQuestions([
+                "Summarize this guide",
+                "What types of problems can machine learning effectively address?",
+                "Why is Python considered a suitable language for machine learning?"
+            ]);
+        }
+    }, [pdfId]);
+
     // Initialize chat with welcome message
-    const initializeChat = useCallback(() => {
+    const initializeChat = useCallback(async () => {
+        // If there's no PDF id, return a default message
+        if (!pdfId) {
+            return [{
+                type: 'assistant',
+                text: 'How can I help you with this document?',
+                timestamp: new Date().toISOString(),
+                isLoading: false
+            }];
+        }
+
+        // Add a loading message while we fetch the welcome chat
+        const loadingMessage = {
+            type: 'assistant',
+            text: '',
+            timestamp: new Date().toISOString(),
+            isLoading: true
+        };
+
+        setMessages([loadingMessage]);
+
+        try {
+            // Create API request with welcome_chat flag set to true
+            const welcomeQuery = "Welcome to this document";
+            const apiRequest = ragAPI.query(pdfId, welcomeQuery, {
+                welcome_chat: true, // Set the welcome_chat flag
+                use_tools: false // Set to false so the welcome_chat flag is processed
+            });
+
+            const response = await apiRequest.regular();
+            
+            if (response && response.data && response.data.response) {
+                return [{
+                    type: 'assistant',
+                    text: response.data.response,
+                    timestamp: new Date().toISOString(),
+                    isLoading: false
+                }];
+            }
+        } catch (error) {
+            console.error('Error fetching welcome message:', error);
+        }
+
+        // Fallback to default message if API call fails
         return [{
             type: 'assistant',
             text: 'How can I help you with this document?',
             timestamp: new Date().toISOString(),
             isLoading: false
         }];
-    }, []);
+    }, [pdfId]);
 
     // Set initial message AFTER preferences have loaded
     useEffect(() => {
         if (messages.length === 0) {
-            setMessages(initializeChat());
+            initializeChat().then(initialMessages => {
+                setMessages(initialMessages);
+                fetchSummaryQuestions(); // Fetch summary questions when chat initializes
+            });
         }
-    }, [initializeChat, messages.length]);
+    }, [initializeChat, messages.length, fetchSummaryQuestions]);
 
     // Focus input field when component mounts
     useEffect(() => {
@@ -347,8 +446,23 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
         return null;
     };
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    // Function to handle question selection
+    const handleQuestionClick = (question) => {
+        setInput(question);
+        setShowSummaryTool(false); // Hide the summary tool after question selection
+    };
+    
+    // Handle question submission
+    const submitQuestion = (question) => {
+        setInput(question);
+        handleSend(question);
+        setShowSummaryTool(false); // Hide the summary tool after question submission
+    };
+    
+    // Modified handleSend to optionally accept a custom message
+    const handleSend = async (customMessage) => {
+        const messageText = customMessage || input;
+        if (!messageText.trim()) return;
 
         // Cancel any existing stream (works for both regular chat and explain requests)
         if (streamController) {
@@ -362,7 +476,7 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
 
         const userMessage = {
             type: 'user',
-            text: input,
+            text: messageText,
             timestamp: new Date().toISOString()
         };
 
@@ -399,7 +513,7 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
                 .join('\n\n');
             
             // Create API request object
-            const apiRequest = ragAPI.query(pdfId, input, {
+            const apiRequest = ragAPI.query(pdfId, messageText, {
                 conversation_history: conversationHistory,
                 selected_text: selectedText,
                 use_tools: true,
@@ -626,10 +740,11 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
                         alignItems: 'center',
                         flex: '1'
                     }}>
-                        <span className="material-icons" style={{ 
-                            fontSize: '24px', 
+                        <span className="material-icons assistant-icon" style={{ 
+                            fontSize: '28px', 
                             color: '#4285f4',
-                            marginRight: '10px'
+                            marginRight: '10px',
+                            filter: 'drop-shadow(0 0 2px rgba(66, 133, 244, 0.4))'
                         }}>psychology</span>
                         
                         <div style={{
@@ -708,6 +823,30 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
                     </div>
                 ))}
                 <div className="scroll-anchor" ref={scrollAnchorRef}></div>
+                
+                {/* Summary tool with generated questions */}
+                {showSummaryTool && summaryQuestions.length > 0 && !isStreaming && !isLoading && (
+                    <div className="summary-tool">
+                        <div className="summary-tool-header">
+                            <span className="material-icons">list_alt</span>
+                            <h3>Summarize this guide</h3>
+                        </div>
+                        <div className="summary-questions">
+                            {summaryQuestions.map((question, index) => (
+                                <div 
+                                    key={index}
+                                    className="summary-question"
+                                    onClick={() => submitQuestion(question)}
+                                >
+                                    <span className="question-icon material-icons">
+                                        {index === 0 ? 'summarize' : 'help_outline'}
+                                    </span>
+                                    <p>{question}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
             
             <div className="chat-input">
@@ -729,7 +868,7 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
                         </button>
                     ) : (
                         <button
-                            onClick={handleSend}
+                            onClick={() => handleSend()}
                             disabled={isLoading || !input.trim()}
                             aria-label="Send message"
                         >

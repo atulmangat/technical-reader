@@ -221,7 +221,7 @@ def parse_tool_calls(llm_response: str) -> List[Dict[str, Any]]:
         return tool_calls
  
 
-def execute_tool_call(tool_call: Dict[str, Any], db: Optional[Any] = None, vector_db: Optional[Any] = None) -> Dict[str, Any]:
+def execute_tool_call(tool_call: Dict[str, Any], pdf_id: int, db: Optional[Any] = None, vector_db: Optional[Any] = None) -> Dict[str, Any]:
     """
     Execute a single tool call with dependency injection.
     
@@ -272,6 +272,10 @@ def execute_tool_call(tool_call: Dict[str, Any], db: Optional[Any] = None, vecto
             
         if "vector_db" in injectable_params:
             execution_params["vector_db"] = vector_db or _vector_db_instance
+            
+        # Inject pdf_id parameter
+        if "pdf_id" in injectable_params:
+            execution_params["pdf_id"] = pdf_id
         
         print(f"Execution parameters: {execution_params}")
         # Execute the function with parameters
@@ -287,44 +291,6 @@ def execute_tool_call(tool_call: Dict[str, Any], db: Optional[Any] = None, vecto
     
     return result
 
-def parse_and_execute(llm_response: str, db: Optional[Any] = None, vector_db: Optional[Any] = None) -> str:
-    """
-    Parse tool calls from an LLM response and execute them.
-    
-    Args:
-        llm_response: The LLM's response text
-        db: Optional database instance to inject
-        vector_db: Optional vector database instance to inject
-        
-    Returns:
-        Processed response with tool results
-    """
-    # Parse tool calls
-    print(f"Parsing tool calls from response: {llm_response}")
-    tool_calls = parse_tool_calls(llm_response)
-    print(f"Tool calls: {tool_calls}")
-    if not tool_calls:
-        # No tool calls found, return the original response
-        return llm_response
-    
-    # Execute tool calls
-    tool_results = []
-    for tool_call in tool_calls:
-        result = execute_tool_call(tool_call, db=db, vector_db=vector_db)
-        tool_results.append(result)
-    
-    # Format tool results
-    formatted_results = ""
-    for result in tool_results:
-        formatted_result = TOOL_RESULT_TEMPLATE.format(
-            tool_name=f"{result['tool_name']}.{result['function']}",
-            parameters=json.dumps(result["parameters"]),
-            success=result["success"],
-            result=result["result"]
-        )
-        formatted_results += formatted_result
-    
-    return formatted_results
 
 async def run_with_tools(
     pdf_id: int,
@@ -382,7 +348,7 @@ async def run_with_tools(
     tool_results = []
     if tool_calls:
         for tool_call in tool_calls:
-            result = execute_tool_call(tool_call, db=db, vector_db=vector_db)
+            result = execute_tool_call(tool_call, pdf_id=pdf_id, db=db, vector_db=vector_db)
             tool_results.append(result)
         
     # Generate the second prompt with tool results and conversation history

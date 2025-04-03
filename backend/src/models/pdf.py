@@ -36,7 +36,6 @@ class PDF(Base):
     table_of_contents = Column(JSON, nullable=True)
 
     # Relationships
-    notes = relationship("Note", back_populates="pdf", cascade="all, delete-orphan")
     highlights = relationship(
         "Highlight", back_populates="pdf", cascade="all, delete-orphan"
     )

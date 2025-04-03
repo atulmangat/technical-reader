@@ -363,6 +363,7 @@ summary_tool = ToolInterface(
 
 # Set the injectable parameters for this tool
 summary_tool.set_injectable_params({"db"})
+summary_tool.set_injectable_params({"pdf_id"})
 
 @summary_tool.register_function
 def get_summary(pdf_id: int, pages: Optional[List[int]] = [], max_sentences: int = 15, db: Session = None) -> str:
@@ -370,7 +371,7 @@ def get_summary(pdf_id: int, pages: Optional[List[int]] = [], max_sentences: int
     Extract key sentences from a PDF and format them for summarization
     
     Args:
-        pdf_id: ID of the PDF document
+        pdf_id: ID of the PDF document (injected)
         pages: List of page numbers to analyze (1-based indexing)
         max_sentences: Maximum number of key sentences to return
         

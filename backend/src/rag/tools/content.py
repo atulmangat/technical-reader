@@ -23,6 +23,7 @@ content_tool = ToolInterface(
 
 # Set the injectable parameters for this tool
 content_tool.set_injectable_params({"db"})
+content_tool.set_injectable_params({"pdf_id"})
 
 @content_tool.register_function
 def get_page_content(
@@ -35,7 +36,7 @@ def get_page_content(
     Get the content of specified pages directly from the PDF file using PyMuPDF.
     
     Args:
-        pdf_id: ID of the PDF document
+        pdf_id: ID of the PDF document (injected)
         page_numbers: List of page numbers to retrieve
         surrounding_pages: Number of pages to include before and after each requested page (default: 0)
         db: Database session (injected)

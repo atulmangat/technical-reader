@@ -6,7 +6,6 @@ from typing import Dict, Optional
 from .tool_interface import ToolInterface
 from .embeddings import embeddings_tool
 from .highlights import highlights_tool
-from .notes import notes_tool
 from .summary import summary_tool
 from .content import content_tool
 
@@ -14,7 +13,6 @@ from .content import content_tool
 TOOL_INTERFACES = {
     embeddings_tool.name: embeddings_tool,
     highlights_tool.name: highlights_tool,
-    notes_tool.name: notes_tool,
     summary_tool.name: summary_tool,
     content_tool.name: content_tool,
 }

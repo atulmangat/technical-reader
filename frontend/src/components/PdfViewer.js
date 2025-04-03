@@ -1347,7 +1347,7 @@ export function PdfViewer() {
 
     // Handle navigation to library
     const handleLibraryClick = useCallback(() => {
-        navigate('/');
+        navigate('/#library');
     }, [navigate]);
 
     // Add a function to handle the explain button click
