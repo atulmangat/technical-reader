@@ -10,7 +10,6 @@ from .mistral import MistralLLM
 from .deepseek import DeepseekLLM
 from .gemini import GeminiLLM
 from ...config import config
-from google import genai
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -60,7 +59,6 @@ def call_llm(
     max_tokens: int = 8192, 
     temperature: float = 0.7,
     llm_type: str = DEFAULT_LLM_TYPE,
-    response_schema: Optional[genai.types.Schema] = None
 ) -> str:
     """
     Call the LLM with a prompt and return the response.
@@ -79,8 +77,7 @@ def call_llm(
         response = llm.complete(
             prompt=prompt,
             max_tokens=max_tokens,
-            temperature=temperature,
-            response_schema=response_schema
+            temperature=temperature
         )
         return response
     except Exception as e:

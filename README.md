@@ -35,7 +35,18 @@ An interactive PDF viewer with AI-powered chat, highlighting, and note-taking ca
    cd backend
    ```
 
-3. Create and activate a virtual environment:
+3. Create and activate a virtual environment via any method:
+
+   - via uv:
+   ```bash
+   # if uv is not installed
+   brew install uv
+
+   uv venv venv
+   source venv/bin/activate
+   ```
+
+   - via python
    ```bash
    python -m venv venv
    # On Windows
@@ -44,14 +55,21 @@ An interactive PDF viewer with AI-powered chat, highlighting, and note-taking ca
    source venv/bin/activate
    ```
 
-4. Install dependencies:
+4. Install dependencies via any method:
+
+   - via uv
+   ```bash
+   uv pip install -r requirements.txt
+   ```
+
+   - via pip
    ```bash
    pip install -r requirements.txt
    ```
 
 5. Initialize Database (Only Required for First-Time Setup or Schema Changes)
    ```bash
-   python -m app.initialize_db
+   python scripts/init_db.py
    ```
    Note: You only need to run this when setting up the project for the first time or if you manually delete the database or change models.
 
@@ -84,3 +102,8 @@ docker run --name postgres-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=pos
 ```
 
 
+# Run Qdrant:
+If you're using Docker, you can start Qdrant with the following command:
+```bash
+docker run -p 6333:6333 -d qdrant/qdrant
+```

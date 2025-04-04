@@ -1,64 +1,43 @@
-from google import genai
+TOC_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "chapters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["chapter_name", "start_page", "end_page", "chapter_number"],
+                "properties": {
+                    "chapter_name": {"type": "string"},
+                    "chapter_topics": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "start_page": {"type": "integer"},
+                    "end_page": {"type": "integer"},
+                    "chapter_number": {"type": "integer"},
+                }
+            }
+        }
+    }
+}
 
 
-# Define the schema for table of contents
-
-TOC_RESPONSE_SCHEMA = genai.types.Schema(
-    type=genai.types.Type.OBJECT,
-    properties={
-        "chapters": genai.types.Schema(
-            type=genai.types.Type.ARRAY,
-            items=genai.types.Schema(
-                type=genai.types.Type.OBJECT,
-                required=["chapter_name", "start_page", "end_page", "chapter_number"],
-                properties={
-                    "chapter_name": genai.types.Schema(
-                        type=genai.types.Type.STRING,
-                    ),
-                    "chapter_topics": genai.types.Schema(
-                        type=genai.types.Type.ARRAY,
-                        items=genai.types.Schema(
-                            type=genai.types.Type.STRING,
-                        ),
-                    ),
-                    "start_page": genai.types.Schema(
-                        type=genai.types.Type.INTEGER,
-                    ),
-                    "end_page": genai.types.Schema(
-                        type=genai.types.Type.INTEGER,
-                    ),
-                    "chapter_number": genai.types.Schema(
-                        type=genai.types.Type.INTEGER,
-                    ),
-                },
-            ),
-        ),
-    },
-)
-
-
-TOOL_RESPONSE_SCHEMA = genai.types.Schema(
-            type = genai.types.Type.OBJECT,
-            properties = {
-                "tool_calls": genai.types.Schema(
-                    type = genai.types.Type.ARRAY,
-                    items = genai.types.Schema(
-                        type = genai.types.Type.OBJECT,
-                        properties = {
-                            "function": genai.types.Schema(
-                                type = genai.types.Type.STRING,
-                            ),
-                            "parameters": genai.types.Schema(
-                                type = genai.types.Type.ARRAY,
-                                items = genai.types.Schema(
-                                    type = genai.types.Type.STRING,
-                                ),
-                            ),
-                            "tool": genai.types.Schema(
-                                type = genai.types.Type.STRING,
-                            ),
-                        },
-                    ),
-                ),
-            },
-        )
+TOOL_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "tool_calls": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "function": {"type": "string"},
+                    "parameters": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "tool": {"type": "string"},
+                }
+            }
+        }
+    }
+}
