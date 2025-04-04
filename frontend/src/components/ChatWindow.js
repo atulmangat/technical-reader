@@ -726,76 +726,23 @@ const ChatWindow = forwardRef(({ initialContext, onAddNote, currentSelection, pd
 
     return (
         <div className="chat-window" ref={chatWindowRef}>
-            <div className="chat-header" style={{ 
-                padding: '12px 16px',
-                borderBottom: '1px solid #eaeaea'
-            }}>
-                <div className="chat-header-main" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                }}>
-                    <div className="assistant-title" style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flex: '1'
-                    }}>
-                        <span className="material-icons assistant-icon" style={{ 
-                            fontSize: '28px', 
-                            color: '#4285f4',
-                            marginRight: '10px',
-                            filter: 'drop-shadow(0 0 2px rgba(66, 133, 244, 0.4))'
-                        }}>psychology</span>
-                        
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column'
-                        }}>
-                            <h2 style={{
-                                margin: '0',
-                                fontSize: '1.1rem',
-                                fontWeight: '600',
-                                color: '#202124'
-                            }}>Document Assistant</h2>
-                            <span style={{
-                                fontSize: '0.75rem',
-                                color: '#5f6368',
-                                fontWeight: 400
-                            }}>Powered by AI</span>
+            <div className="chat-header">
+                <div className="chat-header-main">
+                    <div className="assistant-title">
+                        <span className="material-icons">psychology</span>
+                        <div>
+                            <h2>Document Assistant</h2>
+                            <span>Powered by AI</span>
                         </div>
                     </div>
                     
                     <div className="chat-header-right">
-                        <div className="profile-section" style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                        }}>
-                            <span className="username" style={{
-                                fontSize: '0.9rem',
-                                color: '#5f6368'
-                            }}>Atul</span>
+                        <div className="profile-section">
+                            <span className="username">Atul</span>
                             <div className="profile-dropdown">
-                                <button className="profile-button" style={{
-                                    border: 'none',
-                                    background: 'none',
-                                    cursor: 'pointer',
-                                    padding: '0'
-                                }}>
-                                    <div className="avatar-container" style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        borderRadius: '50%',
-                                        backgroundColor: '#4285f4',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}>
-                                        <div className="avatar-placeholder" style={{
-                                            color: 'white',
-                                            fontSize: '16px',
-                                            fontWeight: '500'
-                                        }}>A</div>
+                                <button className="profile-button">
+                                    <div className="avatar-container">
+                                        <div className="avatar-placeholder">A</div>
                                     </div>
                                 </button>
                             </div>

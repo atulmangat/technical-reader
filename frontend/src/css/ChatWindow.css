@@ -74,12 +74,13 @@
 .chat-header {
     display: flex;
     flex-direction: column;
-    background-color: #f0f9ff;
-    border-radius: 30px;
-    color: #1e40af;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    color: #1e293b;
     flex-shrink: 0;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    padding: 0 0 10px 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    padding: 14px 20px;
+    z-index: 10;
 }
 
 /* New styles for chat header main section */
@@ -87,106 +88,49 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 20px;
-    padding: 5px 16px;
-    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
-    border-top: 1px solid rgba(59, 130, 246, 0.2);
-    border-left: 1px solid rgba(59, 130, 246, 0.2);
-    border-right: 1px solid rgba(59, 130, 246, 0.2);
-    margin-bottom: 1px;
-    margin-top: 1px;
+    padding: 0;
+    position: relative;
 }
 
 .thinkpad-heading {
-    font-size: 30px;
+    font-size: 18px;
     padding: 0;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     margin: 0;
     display: flex;
-    margin-left: 20%;
-    gap: 8px;
+    gap: 10px;
     flex: 1;
     cursor: pointer;
-    transition: transform 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .thinkpad-heading:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 .thinkpad-heading:hover h2 {
-    background: linear-gradient(45deg, #3b82f6, #60a5fa);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    color: #2563eb;
 }
 
 .thinkpad-heading:hover .material-icons {
-    animation: pulse-glow 1.5s infinite alternate;
-    color: #1e40af;
+    color: #2563eb;
 }
 
 .thinkpad-heading h2 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 600;
-    color: #3b82f6;
-    letter-spacing: 0.01em;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    font-family: 'Quicksand', 'Segoe UI', sans-serif;
-    text-shadow: 1px 1px 1px rgba(59, 130, 246, 0.2);
-}
-
-.thinkpad-heading h2::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(
-        to right,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.6) 50%,
-        rgba(255, 255, 255, 0) 100%
-    );
-    transform: skewX(-25deg);
-    opacity: 0;
-}
-
-.thinkpad-heading:hover h2::after {
-    animation: shine 1.5s infinite;
-    opacity: 1;
-}
-
-@keyframes shine {
-    0% {
-        left: -100%;
-    }
-    100% {
-        left: 200%;
-    }
+    color: #0f172a;
+    letter-spacing: -0.01em;
+    transition: all 0.2s ease;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .thinkpad-heading .material-icons {
-    font-size: 35px;
-    color: #3b82f6;
-    transition: all 0.3s ease;
-}
-
-@keyframes pulse-glow {
-    0% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.5));
-    }
-    100% {
-        transform: scale(1.1);
-        filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.7));
-    }
+    font-size: 24px;
+    color: #334155;
+    transition: all 0.2s ease;
 }
 
 .chat-header-left {
@@ -195,43 +139,61 @@
     flex: 0 0 auto;
 }
 
-
 .chat-header-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     flex: 0 0 auto;
 }
 
-.chat-header h3 {
+.assistant-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.assistant-title .material-icons {
+    font-size: 26px;
+    color: #2563eb;
+    filter: drop-shadow(0 0 1px rgba(37, 99, 235, 0.3));
+}
+
+.assistant-title h2 {
     margin: 0;
-    font-size: 1.4rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    letter-spacing: 0.01em;
-    color: #2a4887; /* Slightly deeper blue */
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.assistant-title span {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
 }
 
 /* Profile section styles */
 .profile-section {
     display: flex;
     align-items: center;
-    gap: 10px;
-    background-color: rgba(59, 130, 246, 0.1);
-    padding: 8px 14px;
-    border-radius: 24px;
-    border: none;
+    gap: 8px;
+    background-color: #f8fafc;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
     transition: all 0.2s ease;
-    height: 30px;
+    height: 34px;
 }
 
 .profile-section:hover {
-    background-color: rgba(59, 130, 246, 0.2);
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
 }
 
 .username {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
-    color: #4668d6;
+    color: #334155;
 }
 
 /* Profile dropdown styles */
@@ -253,29 +215,18 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    overflow: hidden;
+    background-color: #2563eb;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #609bfa;
-    border: 2px solid rgba(255, 255, 255, 0.8);
-}
-
-.avatar-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .avatar-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
     color: white;
-    font-weight: bold;
     font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
 }
 
 /* Dropdown menu */
@@ -1638,7 +1589,7 @@ input:checked + .toggle-slider:before {
 }
 
 .material-icons {
-    font-size: 18px;
+    font-size: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
