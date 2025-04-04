@@ -136,30 +136,85 @@
 /* Improved text layer styling */
 .text-layer {
     position: absolute;
-    top: 0;
     left: 0;
+    top: 0;
     right: 0;
     bottom: 0;
     overflow: hidden;
+    opacity: 1;
     line-height: 1.0;
-    user-select: text;
+    text-align: initial;
+    pointer-events: none;
+    /* Higher z-index to ensure text is above the canvas */
     z-index: 2;
-    opacity: 0.01; /* Make entire layer very transparent */
-    pointer-events: none;  /* Changed from 'all' so that empty areas do not capture pointer events */
 }
 
-/* Style for the text spans */
+/* PDF text spans */
 .text-layer .pdf-text {
     color: transparent;
     position: absolute;
-    cursor: text;
-    transform-origin: 0% 0%;
     white-space: pre;
+    cursor: text;
+    transform-origin: left bottom;
+    /* Fix for vertical alignment */
+    margin-top: 0;
     pointer-events: all;
-    background-color: transparent;
+    /* Font smoothing */
+    -webkit-font-smoothing: subpixel-antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* This helps with text selection - make selected text more visible */
+/* Only visible when selected */
+.text-layer ::selection {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+/* Highlight styles */
+.highlight-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    opacity: 1;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.highlight {
+    position: absolute;
+    border-radius: 2px;
+    /* Allow click-through for interactions below */
+    pointer-events: all;
+    mix-blend-mode: multiply;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Add media query for high-DPI displays */
+@media (-webkit-min-device-pixel-ratio: 1.5),
+       (min-resolution: 144dpi) {
+    .text-layer .pdf-text {
+        /* Slightly adjust positioning on high-DPI displays */
+        transform-origin: left bottom;
+    }
+}
+
+/* Fix for common text alignment issues on specific browsers */
+@-moz-document url-prefix() {
+    .text-layer .pdf-text {
+        transform-origin: left bottom;
+    }
+}
+
+/* For WebKit browsers */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    .text-layer .pdf-text {
+        transform-origin: left bottom;
+    }
+}
+
+/* Style for the text spans */
 .text-layer .pdf-text::selection {
     background-color: rgba(0, 0, 255, 0.4);
     color: transparent; 
@@ -483,4 +538,19 @@ mark {
         border-left: none;
         border-top: 1px solid #e0e0e0;
     }
+}
+
+/* PDF Viewer container styles */
+.pdf-page-container {
+    position: relative;
+    margin: 0 auto;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+/* PDF Canvas styles */
+.pdf-page-container canvas {
+    display: block;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: white;
 }

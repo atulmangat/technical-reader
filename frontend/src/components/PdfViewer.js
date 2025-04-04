@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import "pdfjs-dist/web/pdf_viewer.css";
+import '../css/PdfViewer.css'; // Import the custom PDF viewer styles
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { PdfIndex } from './PdfIndex';
 import { ResizablePanel } from './ResizablePanel';
@@ -16,6 +17,17 @@ const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.5, 3.0];
 const DEFAULT_ZOOM_INDEX = 4; // 1.75 is the default zoom level
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 5.0;
+
+// Add a helper function to fix text layer offsets
+const removeTextLayerOffset = (textLayer) => {
+    if (!textLayer) return;
+    // Remove text layer inline styles that can cause misalignment
+    textLayer.style.top = '0';
+    textLayer.style.left = '0';
+    textLayer.style.transform = '';
+    // Crucial for alignment - set origin at top left
+    textLayer.style.transformOrigin = 'top left';
+};
 
 export function PdfViewer() {
     const { id } = useParams();
@@ -376,15 +388,19 @@ export function PdfViewer() {
                 if (textLayer && isMounted) {
                     textLayer.innerHTML = '';
 
-                    // Set text layer dimensions
-                    textLayer.style.left = '0';
+                    // Ensure text layer and canvas have the same container dimensions
+                    textLayer.style.position = 'absolute';
                     textLayer.style.top = '0';
+                    textLayer.style.left = '0';
                     textLayer.style.width = `${viewport.width * scale}px`;
                     textLayer.style.height = `${viewport.height * scale}px`;
+                    textLayer.style.transformOrigin = 'top left';
                     
-                    // Create our own text layer implementation
-                    // Scale the text positioning to match the viewport scale
+                    // Create a scaled viewport for text layer positioning
                     const scaledViewport = viewport.clone({ scale: scale });
+                    
+                    // Get styles map for font adjustments
+                    const styles = textContent.styles || {};
                     
                     textContent.items.forEach(item => {
                         if (!item.str.trim()) return;
@@ -393,10 +409,25 @@ export function PdfViewer() {
                         const tx = item.transform;
                         if (!tx || tx.length !== 6) return;
                         
-                        // Calculate the font size and position
+                        // Calculate the font size and position using consistent scaling
                         const fontSize = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3])) * scale;
-                        const left = (tx[4] * scale);
-                        const top = (viewport.height - tx[5]) * scale;
+                        
+                        // Get current font style for potential ascent/descent adjustment
+                        const style = styles[item.fontName] || {};
+                        
+                        // Adjust positioning for perfect alignment
+                        let left = tx[4] * scale;
+                        let top = (viewport.height - tx[5]) * scale;
+                        
+                        // Apply ascent/descent adjustment to fix vertical alignment
+                        if (style.ascent) {
+                            top -= fontSize * style.ascent * 0.7; // Adjust factor as needed
+                        } else if (style.descent) {
+                            top -= fontSize * (1 + style.descent * 0.7);
+                        } else {
+                            // If no font metadata, apply a standard adjustment
+                            top -= fontSize * 0.35; // Fine-tune this value based on your PDFs
+                        }
                         
                         const element = document.createElement('span');
                         element.textContent = item.str;
@@ -406,9 +437,13 @@ export function PdfViewer() {
                         element.style.fontSize = `${fontSize}px`;
                         element.style.fontFamily = item.fontName || 'sans-serif';
                         element.style.whiteSpace = 'pre';
+                        element.style.transform = 'scale(1)'; // Ensure no additional transform
+                        element.style.transformOrigin = 'left bottom'; // Important for text alignment
                         element.style.color = 'transparent';
                         element.style.backgroundColor = 'transparent';
                         element.style.userSelect = 'text';
+                        element.style.cursor = 'text';
+                        element.style.pointerEvents = 'all';
                         
                         // Make text selectable but visually transparent
                         element.classList.add('pdf-text');
@@ -416,6 +451,9 @@ export function PdfViewer() {
                         
                         textLayer.appendChild(element);
                     });
+
+                    // Apply the fix to ensure no additional offsets are applied
+                    removeTextLayerOffset(textLayer);
 
                     if (isMounted) {
                         renderHighlights(highlights, viewport);
@@ -1433,6 +1471,25 @@ export function PdfViewer() {
             }, 8000);
         }
     }, [currentSelection, selectedText]);
+
+    // Add a useEffect hook to adjust text layer when zooming or resizing
+    useEffect(() => {
+        // Fix text layer offset after any zoom changes or window resize
+        if (textLayerRef.current) {
+            removeTextLayerOffset(textLayerRef.current);
+        }
+        
+        const handleResize = () => {
+            if (textLayerRef.current) {
+                removeTextLayerOffset(textLayerRef.current);
+            }
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [scale]); // Re-run when scale changes
 
     return (
         <div className="pdf-viewer-page">
