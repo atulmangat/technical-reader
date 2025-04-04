@@ -18,6 +18,9 @@ const DEFAULT_ZOOM_INDEX = 4; // 1.75 is the default zoom level
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 5.0;
 
+// For development: set to true to see text layer boxes for debugging alignment issues
+const DEBUG_TEXT_BOXES = false;
+
 // Add a helper function to fix text layer offsets
 const removeTextLayerOffset = (textLayer) => {
     if (!textLayer) return;
@@ -429,6 +432,21 @@ export function PdfViewer() {
                             top -= fontSize * 0.35; // Fine-tune this value based on your PDFs
                         }
                         
+                        // Calculate text width more accurately
+                        let width;
+                        if (item.width) {
+                            // Use the item's width if available
+                            width = item.width * viewport.scale * scale;
+                        } else {
+                            // Estimate width based on font size and string length
+                            // This is a rough approximation - adjust the multiplier based on your font
+                            width = item.str.length * fontSize * 0.58;
+                        }
+                        
+                        // Add a small padding to the width (1-2px on each side)
+                        width += 4;
+                        
+                        // Create the text element
                         const element = document.createElement('span');
                         element.textContent = item.str;
                         element.style.position = 'absolute';
@@ -439,11 +457,20 @@ export function PdfViewer() {
                         element.style.whiteSpace = 'pre';
                         element.style.transform = 'scale(1)'; // Ensure no additional transform
                         element.style.transformOrigin = 'left bottom'; // Important for text alignment
+                        element.style.width = `${width}px`; // Set explicit width
+                        element.style.height = `${fontSize * 1.2}px`; // Set explicit height based on font size
                         element.style.color = 'transparent';
                         element.style.backgroundColor = 'transparent';
                         element.style.userSelect = 'text';
                         element.style.cursor = 'text';
                         element.style.pointerEvents = 'all';
+                        
+                        // Add debug visualization if enabled
+                        if (DEBUG_TEXT_BOXES) {
+                            element.style.border = '1px solid rgba(0, 0, 255, 0.2)';
+                            element.style.backgroundColor = 'rgba(173, 216, 230, 0.1)';
+                            element.style.color = 'rgba(0, 0, 0, 0.2)';
+                        }
                         
                         // Make text selectable but visually transparent
                         element.classList.add('pdf-text');
