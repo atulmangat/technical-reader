@@ -28,6 +28,7 @@ class PDF(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     total_pages = Column(Integer, nullable=True)
+    current_page = Column(Integer, default=1)
     has_embeddings = Column(Boolean, default=False)
     processing_error = Column(String, nullable=True)
     processing_status = Column(

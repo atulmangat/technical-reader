@@ -48,10 +48,15 @@ class PDFResponse(BaseModel):
     thumbnail_path: Optional[str] = None
     file_size: int
     total_pages: int = None
+    current_page: int = 1
 
 
 class PDFUpdateRequest(BaseModel):
     title: str
+
+
+class CurrentPageUpdateRequest(BaseModel):
+    page: int
 
 
 def get_total_pages(file_path: str) -> int:
@@ -252,10 +257,35 @@ def update_pdf(
     
     if not pdf:
         raise HTTPException(status_code=404, detail="PDF not found or you don't have access to it")
-
-    # Update title
-    pdf.title = update_data.title
     
+    pdf.title = update_data.title
+    db.commit()
+    db.refresh(pdf)
+    
+    return pdf
+
+
+@router.patch("/{pdf_id}/current-page", response_model=PDFResponse)
+def update_current_page(
+    pdf_id: str,
+    update_data: CurrentPageUpdateRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a PDF's current page"""
+    pdf = db.query(PDF).filter(
+        PDF.id == pdf_id,
+        PDF.user_id == current_user.id
+    ).first()
+    
+    if not pdf:
+        raise HTTPException(status_code=404, detail="PDF not found or you don't have access to it")
+    
+    # Validate page number is within range
+    if update_data.page < 1 or (pdf.total_pages and update_data.page > pdf.total_pages):
+        raise HTTPException(status_code=400, detail="Invalid page number")
+    
+    pdf.current_page = update_data.page
     db.commit()
     db.refresh(pdf)
     

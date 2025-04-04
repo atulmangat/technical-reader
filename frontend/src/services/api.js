@@ -98,6 +98,7 @@ export const pdfAPI = {
   },
   deletePdf: (pdfId) => api.delete(`/api/pdfs/${pdfId}`),
   renamePdf: (pdfId, newTitle) => api.patch(`/api/pdfs/${pdfId}`, { title: newTitle }),
+  updateCurrentPage: (pdfId, page) => api.patch(`/api/pdfs/${pdfId}/current-page`, { page }),
 };
 
 // Notes API

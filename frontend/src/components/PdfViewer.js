@@ -49,6 +49,8 @@ export function PdfViewer() {
     const [scrollIndicator, setScrollIndicator] = useState({ visible: false, progress: 0, direction: 'next' });
     const [currentSectionTitle, setCurrentSectionTitle] = useState('');
     const [pageInputValue, setPageInputValue] = useState('');
+    const [initialPageLoaded, setInitialPageLoaded] = useState(false);
+    const pageChangeTimeoutRef = useRef(null);
 
     // Add state for controls visibility
     const [controlsVisible, setControlsVisible] = useState(true);
@@ -132,8 +134,25 @@ export function PdfViewer() {
             setTimeout(() => {
                 setPageTransition('page-current');
             }, 50);
+            
+            // Clear any existing timeout
+            if (pageChangeTimeoutRef.current) {
+                clearTimeout(pageChangeTimeoutRef.current);
+            }
+            
+            // Set a timeout to update the current page after 2 seconds
+            pageChangeTimeoutRef.current = setTimeout(() => {
+                // Save the current page to the backend
+                pdfAPI.updateCurrentPage(id, newPage)
+                    .then(() => {
+                        console.log(`Saved page ${newPage} for PDF ${id}`);
+                    })
+                    .catch(error => {
+                        console.error('Error saving current page:', error);
+                    });
+            }, 2000);
         }, 150);
-    }, [currentPage]);
+    }, [currentPage, id]);
 
     // Then define changePage which uses handlePageChange
     const changePage = useCallback((delta) => {
@@ -248,6 +267,11 @@ export function PdfViewer() {
                 setIsLoading(true);
                 setError(null);
 
+                // First get the PDF metadata to check if there's a saved page
+                const metadataResponse = await pdfAPI.getAllPdfs();
+                const pdfMetadata = metadataResponse.data.find(pdf => pdf.id === id);
+                const savedPage = pdfMetadata?.current_page || 1;
+
                 const response = await pdfAPI.getPdf(id);
                 
                 if (!response) {
@@ -261,6 +285,15 @@ export function PdfViewer() {
                 const pdfDoc = await loadingTask.promise;
                 setPdf(pdfDoc);
                 setTotalPages(pdfDoc.numPages);
+                
+                // Set initialPageLoaded to false initially
+                setInitialPageLoaded(false);
+                
+                // Load the saved page if it exists and is valid
+                if (savedPage > 1 && savedPage <= pdfDoc.numPages) {
+                    setCurrentPage(savedPage);
+                    setPageInputValue(savedPage.toString());
+                }
             } catch (err) {
                 console.error('Error loading PDF:', err);
                 setError(`Error loading PDF: ${err.message}`);
@@ -275,6 +308,13 @@ export function PdfViewer() {
         if (id) {
             loadPdf();
         }
+        
+        // Clean up page change timeout on unmount
+        return () => {
+            if (pageChangeTimeoutRef.current) {
+                clearTimeout(pageChangeTimeoutRef.current);
+            }
+        };
     }, [id, navigate]);
 
     useEffect(() => {
