@@ -147,7 +147,6 @@
     pointer-events: none;
     /* Higher z-index to ensure text is above the canvas */
     z-index: 2;
-    box-sizing: border-box;
 }
 
 /* PDF text spans */
@@ -157,26 +156,14 @@
     white-space: pre;
     cursor: text;
     transform-origin: left bottom;
-    /* Add padding around text to create a box-like appearance */
-    padding: 0 1px;
-    /* Ensure the element has a proper box model */
-    box-sizing: border-box;
-    /* Add subtle border for debugging if needed - can be commented out in production */
-    /* border: 1px solid rgba(0,0,255,0.05); */
     /* Fix for vertical alignment */
     margin-top: 0;
     pointer-events: all;
     /* Font smoothing */
     -webkit-font-smoothing: subpixel-antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Improve text layout */
-    text-rendering: geometricPrecision;
-    /* Fix for selection issues */
-    -webkit-touch-callout: text;
-    user-select: text;
-    /* Make sure width is respected */
-    max-width: 100%;
-    display: block;
+    /* Fix for selection flickering */
+    height: 200px;
 }
 
 /* Only visible when selected */
@@ -212,8 +199,6 @@
     .text-layer .pdf-text {
         /* Slightly adjust positioning on high-DPI displays */
         transform-origin: left bottom;
-        /* Increase padding slightly for high-DPI */
-        padding: 0 1.5px;
     }
 }
 
@@ -221,10 +206,6 @@
 @-moz-document url-prefix() {
     .text-layer .pdf-text {
         transform-origin: left bottom;
-        /* Firefox-specific adjustments */
-        padding: 0 1px;
-        /* Improve text rendering in Firefox */
-        text-rendering: optimizeLegibility;
     }
 }
 
@@ -232,8 +213,6 @@
 @media screen and (-webkit-min-device-pixel-ratio:0) {
     .text-layer .pdf-text {
         transform-origin: left bottom;
-        /* WebKit-specific adjustments */
-        padding: 0 1px;
     }
 }
 
