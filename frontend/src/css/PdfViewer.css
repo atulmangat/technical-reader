@@ -144,7 +144,7 @@
     opacity: 1;
     line-height: 1.0;
     text-align: initial;
-    pointer-events: none;
+    pointer-events: none; /* This prevents the flickering when clicking on whitespace */
     /* Higher z-index to ensure text is above the canvas */
     z-index: 2;
 }
@@ -158,7 +158,7 @@
     transform-origin: left bottom;
     /* Fix for vertical alignment */
     margin-top: 0;
-    pointer-events: all;
+    pointer-events: all; /* Text elements are still selectable */
     /* Font smoothing */
     -webkit-font-smoothing: subpixel-antialiased;
     -moz-osx-font-smoothing: grayscale;

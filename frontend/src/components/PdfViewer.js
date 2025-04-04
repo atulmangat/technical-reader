@@ -27,6 +27,16 @@ const removeTextLayerOffset = (textLayer) => {
     textLayer.style.transform = '';
     // Crucial for alignment - set origin at top left
     textLayer.style.transformOrigin = 'top left';
+    
+    // Fix for text selection flickering in whitespace
+    // Set pointer-events to none on the text layer itself
+    textLayer.style.pointerEvents = 'none';
+    
+    // But enable pointer-events on the text elements
+    const textElements = textLayer.querySelectorAll('.pdf-text');
+    textElements.forEach(el => {
+        el.style.pointerEvents = 'all';
+    });
 };
 
 export function PdfViewer() {
