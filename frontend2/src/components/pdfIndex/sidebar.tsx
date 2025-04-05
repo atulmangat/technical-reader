@@ -18,6 +18,7 @@ import {
 import { ChevronDown, FileText } from "lucide-react";
 import { useState } from "react";
 import { TOutlineItem } from "@/components/pdfIndex";
+import { Link } from "@tanstack/react-router";
 
 interface IPdfSidebarProps {
   isLoading?: boolean;
@@ -135,9 +136,9 @@ function OutlineItem({ item, onItemClick, level = 0 }: IOutlineItemProps) {
         onClick={handleItemClick}
       >
         {item.dest || item.url ? (
-          <a href={item.url || "#"} className="truncate">
+          <Link to={item.url || "#"} className="truncate">
             {item.title}
-          </a>
+          </Link>
         ) : (
           <span className="truncate">{item.title}</span>
         )}

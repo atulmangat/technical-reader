@@ -56,7 +56,7 @@ const sampleOutline = [
     ],
   },
   {
-    title: "Appendix",
+    title: "Chapter 3",
     dest: "page12",
     items: [
       {
@@ -66,6 +66,76 @@ const sampleOutline = [
       {
         title: "References",
         dest: "page14",
+      },
+    ],
+  },
+  {
+    title: "Chapter 4",
+    dest: "page15",
+    items: [
+      {
+        title: "Glossary",
+        dest: "page16",
+      },
+      {
+        title: "References",
+        dest: "page17",
+      },
+    ],
+  },
+  {
+    title: "Chapter 5",
+    dest: "page18",
+    items: [
+      {
+        title: "Glossary",
+        dest: "page19",
+      },
+      {
+        title: "References",
+        dest: "page20",
+      },
+    ],
+  },
+  {
+    title: "Chapter 6",
+    dest: "page21",
+    items: [
+      {
+        title: "Glossary",
+        dest: "page22",
+      },
+      {
+        title: "References",
+        dest: "page23",
+      },
+    ],
+  },
+  {
+    title: "Chapter 7",
+    dest: "page24",
+    items: [
+      {
+        title: "Glossary",
+        dest: "page25",
+      },
+      {
+        title: "References",
+        dest: "page26",
+      },
+    ],
+  },
+  {
+    title: "Chapter 8",
+    dest: "page27",
+    items: [
+      {
+        title: "Glossary",
+        dest: "page28",
+      },
+      {
+        title: "References",
+        dest: "page29",
       },
     ],
   },
@@ -91,10 +161,10 @@ export const PdfSidebarContainer = () => {
   };
 
   return (
-      <PdfSidebar
-        isLoading={isLoading}
-        outline={outline}
-        onItemClick={handleItemClick}
-      />
+    <PdfSidebar
+      isLoading={isLoading}
+      outline={outline}
+      onItemClick={handleItemClick}
+    />
   );
 };
