@@ -91,12 +91,10 @@ export const PdfSidebarContainer = () => {
   };
 
   return (
-    <div className="w-64 border-r">
       <PdfSidebar
         isLoading={isLoading}
         outline={outline}
         onItemClick={handleItemClick}
       />
-    </div>
   );
 };

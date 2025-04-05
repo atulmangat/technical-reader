@@ -1,97 +1,23 @@
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarProvider,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Link } from "@tanstack/react-router";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-// import { ChevronRightIcon } from "lucide-react";
 import { ChevronDown, FileText } from "lucide-react";
 import { useState } from "react";
 import { TOutlineItem } from "@/components/pdfIndex";
-
-const projectInfo = {
-  icon: "#",
-  name: "ChatWithPdf",
-  url: "/",
-};
-
-// export function PdfIndexSidebar() {
-//   const renderOutlineItems = (items: OutlineItem[]) => {
-//     return items.map((item, index) => {
-//       const { title, dest, items: childItems } = item;
-
-//       if (childItems && childItems.length > 0) {
-//         return (
-//           <Collapsible
-//             defaultOpen
-//             className="group/collapsible"
-//             key={`collapsible-${index}`}
-//           >
-//             <SidebarMenuSubItem>
-//               <CollapsibleTrigger asChild>
-//                 <SidebarMenuSubButton>
-//                   <span>{title}</span>
-//                   <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-//                 </SidebarMenuSubButton>
-//               </CollapsibleTrigger>
-//               <CollapsibleContent>
-//                 <SidebarMenuSub>
-//                   {renderOutlineItems(childItems)}
-//                 </SidebarMenuSub>
-//               </CollapsibleContent>
-//             </SidebarMenuSubItem>
-//           </Collapsible>
-//         );
-//       }
-//       return (
-//         <SidebarMenuItem key={index}>
-//           <SidebarMenuButton>{title}</SidebarMenuButton>
-//         </SidebarMenuItem>
-//       );
-//     });
-//   };
-
-//   return (
-//     <Sidebar>
-//       <SidebarHeader>
-//         <SidebarMenu>
-//           <SidebarMenuItem>
-//             <SidebarMenuButton asChild>
-//               <Link to={projectInfo.url}>
-//                 {projectInfo.icon}
-//                 <span>{projectInfo.name}</span>
-//               </Link>
-//             </SidebarMenuButton>
-//           </SidebarMenuItem>
-//         </SidebarMenu>
-//       </SidebarHeader>
-//       <SidebarContent>
-//         <SidebarGroup>
-//           <SidebarGroupLabel />
-//           <SidebarMenu>{renderOutlineItems(outline)}</SidebarMenu>
-//         </SidebarGroup>
-//         <SidebarGroup />
-//       </SidebarContent>
-//       <SidebarFooter />
-//     </Sidebar>
-//   );
-// }
 
 interface IPdfSidebarProps {
   isLoading?: boolean;
@@ -135,6 +61,7 @@ export function PdfSidebar({
           )}
         </SidebarContent>
       </Sidebar>
+      <SidebarTrigger />
     </SidebarProvider>
   );
 }
@@ -172,6 +99,7 @@ function OutlineItem({ item, onItemClick, level = 0 }: IOutlineItemProps) {
     if (!hasChildren && item.dest && onItemClick) {
       onItemClick(item.dest);
     }
+    console.log("[handleItemClick] event", e);
   };
 
   if (hasChildren) {
