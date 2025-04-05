@@ -49,7 +49,7 @@ export function PdfSidebar({
         <SidebarHeader className="border-b">
           <div className="flex items-center gap-2 px-2 py-3">
             <FileText className="h-6 w-6" />
-            <h2 className="text-lg font-semibold">Chat with PDF</h2>
+            <h2 className="text-lg font-semibold">Content</h2>
           </div>
         </SidebarHeader>
         <SidebarContent>
